@@ -7,9 +7,11 @@ import httpx  # For making weather API calls
 
 app = FastAPI()
 
+# Enable CORS (Allows your React app to talk to Python)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
+    allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
@@ -182,20 +184,7 @@ async def analyze_space(
         "recommendations": recommendations
     }
 
-from fastapi import FastAPI, Form
-from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
-
-app = FastAPI()
-
-# Enable CORS (Allows your React app to talk to Python)
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
 
 # --- 1. UPDATE THE REQUEST MODEL ---
 class ChatRequest(BaseModel):
