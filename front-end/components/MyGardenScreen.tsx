@@ -76,7 +76,8 @@ export function MyGardenScreen({ onNavigate, onPlantClick }: MyGardenScreenProps
       const formData = new FormData();
       formData.append('code', code);
       
-      const res = await fetch('http://localhost:8000/api/kit/scan', {
+      const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+      const res = await fetch(`${API_URL}/api/kit/scan`, {
         method: 'POST',
         body: formData
       });

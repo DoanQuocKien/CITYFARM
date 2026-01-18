@@ -172,7 +172,8 @@ export function ScanScreen({ onNavigate }: ScanScreenProps) {
       formData.append('lat', userLat);
       formData.append('lon', userLon);
 
-      const response = await fetch('http://localhost:8000/api/scan/analyze', {
+      const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+      const response = await fetch(`${API_URL}/api/scan/analyze`, {
         method: 'POST',
         body: formData,
       });

@@ -3,7 +3,5 @@ fastapi
 uvicorn
 pydantic
 python-multipart
-io
-PIL
 httpx
-uuid
+pillow
