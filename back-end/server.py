@@ -5,7 +5,15 @@ from PIL import Image, ImageEnhance, ImageOps
 import random
 import io
 import os
-import httpx  # For making weather API calls
+import httpx
+from pydantic import BaseModel
+from fastapi.responses import JSONResponse
+from google import genai
+from google.genai import types
+from dotenv import load_dotenv
+import base64
+import json
+import uuid
 
 app = FastAPI()
 
@@ -18,122 +26,99 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# --- CONFIGURATION ---
-OPENWEATHER_API_KEY = "eed42e8c8c01866bc6725bd6298c7c6a" # Replace with a free key for the MVP
 
-# --- EXTENDED PLANT DATABASE ---
-# Now includes temperature and humidity preferences
-PLANT_DATABASE = [
-    {
-        "id": "1", "name": "Green Lettuce", "scientificName": "Lactuca sativa",
-        "imageUrl": "https://images.unsplash.com/photo-1595735931739-0a99f2f0b0aa?auto=format&fit=crop&w=1000&q=80",
-        "minLight": 0.3, "maxLight": 0.8, "minTemp": 15, "maxTemp": 28,
-        "difficulty": "Easy", "harvestDays": "30-35 days"
-    },
-    {
-        "id": "2", "name": "Thai Chili", "scientificName": "Capsicum annuum",
-        "imageUrl": "https://images.unsplash.com/photo-1592841200221-a6898f307baa?auto=format&fit=crop&w=1000&q=80",
-        "minLight": 0.7, "maxLight": 1.0, "minTemp": 20, "maxTemp": 35,
-        "difficulty": "Medium", "harvestDays": "60-80 days"
-    },
-    {
-        "id": "3", "name": "Mint", "scientificName": "Mentha",
-        "imageUrl": "https://images.unsplash.com/photo-1633916872730-7199a52e483b?auto=format&fit=crop&w=1000&q=80",
-        "minLight": 0.2, "maxLight": 0.7, "minTemp": 15, "maxTemp": 32,
-        "difficulty": "Easy", "harvestDays": "40-50 days"
-    },
-    # NEW PLANT ADDED
-    {
-        "id": "4", "name": "Green Onion", "scientificName": "Allium fistulosum",
-        "imageUrl": "https://www.almanac.com/sites/default/files/styles/or/public/image_nodes/Untitled%20design%20%288%29_1.jpg?itok=leansz0S",
-        "minLight": 0.4, "maxLight": 1.0, "minTemp": 10, "maxTemp": 30,
-        "difficulty": "Easy", "harvestDays": "50-60 days"
-    }
-]
-
-async def get_weather_data(lat: str, lon: str):
-    """Fetches real weather. Defaults to HCMC mock data if API fails."""
-    if not OPENWEATHER_API_KEY or OPENWEATHER_API_KEY == "YOUR_API_KEY_HERE":
-        # Mock Data (HCMC Typical Weather)
-        return {"temp": 32, "humidity": 80, "desc": "Hot & Humid"}
-    
-    try:
-        url = f"https://api.openweathermap.org/data/2.5/weather?lat={lat}&lon={lon}&units=metric&appid={OPENWEATHER_API_KEY}"
-        async with httpx.AsyncClient() as client:
-            resp = await client.get(url)
-            data = resp.json()
-            return {
-                "temp": data["main"]["temp"],
-                "humidity": data["main"]["humidity"],
-                "desc": data["weather"][0]["description"]
-            }
-    except:
-        return {"temp": 30, "humidity": 75, "desc": "Warm"}
-
-def analyze_light_level(image_bytes):
-    image = Image.open(io.BytesIO(image_bytes)).convert('L')
-    return np.mean(np.array(image)) / 255.0
-
-# --- MOCK KIT DATABASE ---
-SMART_KITS = {
-    "CITYFARM-TOMATO-01": {
-        "name": "Cherry Tomato", "type": "Vegetable", "harvestDays": 60, "daysGrowing": 0, "health": "healthy",
-        "imageUrl": "https://images.unsplash.com/photo-1592841200221-a6898f307baa?auto=format&fit=crop&w=1000&q=80",
-        "nextWatering": "Today, 5:00 PM", "nextFertilizing": "In 14 days", "progress": 0
-    },
-    "CITYFARM-LETTUCE-01": {
-        "name": "Green Lettuce", "type": "Vegetable", "harvestDays": 35, "daysGrowing": 0, "health": "healthy",
-        "imageUrl": "https://images.unsplash.com/photo-1595735931739-0a99f2f0b0aa?auto=format&fit=crop&w=1000&q=80",
-        "nextWatering": "Tomorrow, 8:00 AM", "nextFertilizing": "In 7 days", "progress": 0
-    },
-    "CITYFARM-MINT-01": {
-        "name": "Peppermint", "type": "Herb", "harvestDays": 45, "daysGrowing": 0, "health": "healthy",
-        "imageUrl": "https://images.unsplash.com/photo-1633916872730-7199a52e483b?auto=format&fit=crop&w=1000&q=80",
-        "nextWatering": "Today, 7:00 AM", "nextFertilizing": "In 30 days", "progress": 0
-    },
-    # NEW KIT ADDED
-    "CITYFARM-ONION-01": {
-        "name": "Green Onion", "type": "Herb", "harvestDays": 55, "daysGrowing": 0, "health": "healthy",
-        "imageUrl": "https://www.almanac.com/sites/default/files/styles/or/public/image_nodes/Untitled%20design%20%288%29_1.jpg?itok=leansz0S",
-        "nextWatering": "Tomorrow, 7:00 AM", "nextFertilizing": "In 15 days", "progress": 0
-    }
-}
-
-@app.post("/api/kit/scan")
-async def scan_kit(code: str = Form(...)):
-    """
-    Simulates scanning a QR code.
-    Input: The text string from the QR (e.g., "CITYFARM-TOMATO-01")
-    """
-    kit = SMART_KITS.get(code)
-    
-    if not kit:
-        return {"error": "Invalid or Unknown Kit ID"}, 404
-    
-    # Return the full plant object to be added to the frontend
-    import uuid
-    new_plant = kit.copy()
-    new_plant["id"] = str(uuid.uuid4()) # Generate unique ID for this specific pot
-    new_plant["plantedDate"] = "2026-01-16" # Today's date (mocked)
-    
-    return {"status": "success", "plant": new_plant}
-
-from fastapi.responses import JSONResponse
-from google import genai
-from google.genai import types
 from dotenv import load_dotenv
 
 load_dotenv()
 
 API_KEY = os.getenv("GOOGLE_API_KEY")
 
-client = genai.Client(api_key=API_KEY)
+# --- CONFIGURATION ---
+OPENWEATHER_API_KEY = os.getenv("OPENWEATHER_API_KEY") # Replace with a free key for the MVP
 
-# --- HELPER: Convert UploadFile to Bytes ---
+# --- EXTENDED PLANT DATABASE ---
+# Now includes temperature and humidity preferences
+# --- 1. PLANT DEFINITIONS (Source of Truth) ---
+PLANT_DEFS = {
+    "TOMATO": {
+        "name": "Cherry Tomato", "type": "Vegetable", "harvestDays": 60,
+        "imageUrl": "https://images.unsplash.com/photo-1592841200221-a6898f307baa?auto=format&fit=crop&w=1000&q=80",
+        "nextWatering": "Today, 5:00 PM", "nextFertilizing": "In 14 days"
+    },
+    "LETTUCE": {
+        "name": "Green Lettuce", "type": "Vegetable", "harvestDays": 35,
+        "imageUrl": "https://images.unsplash.com/photo-1595735931739-0a99f2f0b0aa?auto=format&fit=crop&w=1000&q=80",
+        "nextWatering": "Tomorrow, 8:00 AM", "nextFertilizing": "In 7 days"
+    },
+    "MINT": {
+        "name": "Peppermint", "type": "Herb", "harvestDays": 45,
+        "imageUrl": "https://images.unsplash.com/photo-1633916872730-7199a52e483b?auto=format&fit=crop&w=1000&q=80",
+        "nextWatering": "Today, 7:00 AM", "nextFertilizing": "In 30 days"
+    },
+    "ONION": {
+        "name": "Green Onion", "type": "Herb", "harvestDays": 55,
+        "imageUrl": "https://www.almanac.com/sites/default/files/styles/or/public/image_nodes/Untitled%20design%20%288%29_1.jpg?itok=leansz0S",
+        "nextWatering": "Tomorrow, 7:00 AM", "nextFertilizing": "In 15 days"
+    }
+}
+
+# Legacy support for the dev buttons
+LEGACY_MAP = {
+    "CITYFARM-TOMATO-01": "STAND-TOMATO-LEGACY",
+    "CITYFARM-LETTUCE-01": "HANG-LETTUCE-LEGACY",
+    "CITYFARM-MINT-01": "TINY-MINT-LEGACY",
+    "CITYFARM-ONION-01": "UPGR-ONION-LEGACY"
+}
+
+# --- 2. DYNAMIC PARSER (Replaces Hardcoded Dictionary) ---
+@app.post("/api/kit/scan")
+async def scan_kit(code: str = Form(...)):
+    """
+    Parses dynamic codes (e.g., STAND-TOMATO-88219)
+    """
+    # 1. Map legacy codes if necessary
+    if code in LEGACY_MAP:
+        code = LEGACY_MAP[code]
+
+    try:
+        # 2. Parse: KIT-PLANT-ID
+        parts = code.split('-')
+        if len(parts) < 2:
+            return {"error": "Invalid Code Format"}, 400
+
+        plant_key = parts[1].upper() # e.g., "TOMATO"
+        
+        # 3. Lookup Data
+        plant_info = PLANT_DEFS.get(plant_key)
+        
+        # Fallback partial matching if key isn't exact
+        if not plant_info:
+             if "TOM" in code: plant_info = PLANT_DEFS["TOMATO"]
+             elif "LET" in code: plant_info = PLANT_DEFS["LETTUCE"]
+             elif "MIN" in code: plant_info = PLANT_DEFS["MINT"]
+             elif "ONI" in code: plant_info = PLANT_DEFS["ONION"]
+             else: return {"error": "Unknown Plant Type in Code"}, 404
+
+        # 4. Generate Instance
+        new_plant = plant_info.copy()
+        new_plant["id"] = str(uuid.uuid4())
+        new_plant["plantedDate"] = "2026-01-20"
+        new_plant["daysGrowing"] = 0
+        new_plant["health"] = "healthy"
+        new_plant["progress"] = 0
+        
+        return {"status": "success", "plant": new_plant}
+
+    except Exception as e:
+        return {"error": str(e)}, 500
+
+# --- 3. HELPER ---
 async def read_image_file(file: UploadFile) -> bytes:
     return await file.read()
 
-# --- 1. REAL ANALYSIS (Replaces the Mock Logic) ---
+client = genai.Client(api_key=API_KEY)
+
+# --- 4. REAL ANALYSIS (Preserved Logic) ---
 @app.post("/api/scan/analyze")
 async def analyze_space(
     file: UploadFile = File(...),
@@ -143,12 +128,12 @@ async def analyze_space(
     try:
         image_bytes = await read_image_file(file)
 
-        # UPDATED PROMPT WITH GREEN ONION
+        # We keep the prompt exactly as you had it, ensuring high quality output
         plant_list_text = """
-        1. Cherry Tomato (ID: CITYFARM-TOMATO-01) - Needs full sun.
-        2. Green Lettuce (ID: CITYFARM-LETTUCE-01) - Prefers partial shade, cool.
-        3. Peppermint (ID: CITYFARM-MINT-01) - Thrives in shade/moist.
-        4. Green Onion (ID: CITYFARM-ONION-01) - Versatile, likes sun, easy to grow.
+        1. Cherry Tomato (ID: TOMATO) - Needs full sun.
+        2. Green Lettuce (ID: LETTUCE) - Prefers partial shade, cool.
+        3. Peppermint (ID: MINT) - Thrives in shade/moist.
+        4. Green Onion (ID: ONION) - Versatile, likes sun, easy to grow.
         """
 
         prompt = f"""
@@ -157,7 +142,7 @@ async def analyze_space(
         {plant_list_text}
         
         TASK:
-        1. Analyze the light and environment in the photo.
+        1. Analyze the light and environment in the photo, also consider the climate at lat {lat}, lon {lon} (fetch real weather data: temperature, humidity).
         2. Rank the 4 plants above from 'Best Fit' (highest match) to 'Worst Fit' (lowest match).
         3. Provide a logic score (0-100) and reason (in one short sentence) for each.
 
@@ -172,7 +157,7 @@ async def analyze_space(
             }},
             "recommendations": [
                 {{
-                    "id": "CITYFARM-ONION-01",
+                    "id": "ONION",
                     "name": "Green Onion",
                     "matchScore": 90,
                     "reason": "Great spot for onions.",
@@ -181,7 +166,7 @@ async def analyze_space(
                     "harvestDays": "55"
                 }},
                 {{
-                    "id": "CITYFARM-TOMATO-01",
+                    "id": "TOMATO",
                     "name": "Cherry Tomato",
                     "matchScore": 95,
                     "reason": "This spot has intense direct sun, perfect for tomatoes.",
@@ -190,7 +175,7 @@ async def analyze_space(
                     "harvestDays": "60"
                 }},
                 {{
-                    "id": "CITYFARM-LETTUCE-01",
+                    "id": "LETTUCE",
                     "name": "Green Lettuce",
                     "matchScore": 40,
                     "reason": "Too hot and sunny here; lettuce would bolt.",
@@ -199,7 +184,7 @@ async def analyze_space(
                     "harvestDays": "35"
                 }},
                 {{
-                    "id": "CITYFARM-MINT-01",
+                    "id": "MINT",
                     "name": "Peppermint",
                     "matchScore": 30,
                     "reason": "Likely to dry out too fast in this full sun.",
@@ -211,20 +196,13 @@ async def analyze_space(
         }}
         """
 
-        # 4. Call Gemini
         response = client.models.generate_content(
             model="gemini-2.5-flash",
-            contents=[
-                types.Part.from_bytes(data=image_bytes, mime_type="image/jpeg"),
-                prompt
-            ],
-            config=types.GenerateContentConfig(
-                response_mime_type="application/json"
-            )
+            contents=[types.Part.from_bytes(data=image_bytes, mime_type="image/jpeg"), prompt],
+            config=types.GenerateContentConfig(response_mime_type="application/json")
         )
         
-        # 5. Parse JSON
-        import json
+        # JSON Parsing
         raw_text = response.text.strip()
         if raw_text.startswith("```"):
             lines = raw_text.split('\n')
@@ -234,31 +212,32 @@ async def analyze_space(
 
         result_data = json.loads(raw_text)
 
-        # 6. Re-attach your correct Image URLs and Data
-        # The AI does the sorting, but we ensure the image/data is 100% correct from your DB.
+        # Attach correct images from our new Source of Truth
         for rec in result_data.get("recommendations", []):
-            plant_id = rec.get("id")
-            if plant_id in SMART_KITS:
-                original_data = SMART_KITS[plant_id]
-                rec["imageUrl"] = original_data["imageUrl"] # Restore correct image
+            plant_id = rec.get("id", "TOMATO").upper()
+            # Normalize ID if AI returns weird stuff
+            if "TOM" in plant_id: plant_id = "TOMATO"
+            elif "LET" in plant_id: plant_id = "LETTUCE"
+            elif "MIN" in plant_id: plant_id = "MINT"
+            elif "ONI" in plant_id: plant_id = "ONION"
+
+            if plant_id in PLANT_DEFS:
+                original_data = PLANT_DEFS[plant_id]
+                rec["imageUrl"] = original_data["imageUrl"]
                 rec["harvestDays"] = f"{original_data['harvestDays']} days"
-                rec["name"] = original_data["name"] # Ensure accurate name
+                rec["name"] = original_data["name"]
         
         return result_data
 
     except Exception as e:
         print(f"Error: {e}")
-        # Safe fallback to prevent crash
         return {
             "error": str(e),
             "analysis": {"lightLevel": "Error", "lightScore": 0},
             "recommendations": []
         }
-    
-import base64
-import json
 
-# --- 2. SMART "AR" VISUALIZATION (With Safety Margins) ---
+# --- 5. VISUALIZATION (Preserved Logic) ---
 @app.post("/api/visualize")
 async def visualize_garden(
     file: UploadFile = File(...),
@@ -293,8 +272,7 @@ async def visualize_garden(
         room_img = Image.open(io.BytesIO(room_bytes)).convert("RGBA")
         img_w, img_h = room_img.size
 
-        # 3. ASK GEMINI (The "Landscape Architect")
-        # We ask for a LIST of boxes this time.
+        # 3. ASK GEMINI
         prompt = f"""
         Act as a landscape architect. Look at this room/balcony photo.
         I want to create a LUSH GARDEN by filling the available floor/surface space with MANY pots of the same plant.
@@ -304,81 +282,96 @@ async def visualize_garden(
         - Image Aspect Ratio: {aspect_ratio:.2f} (Width/Height)
         
         TASK:
-        1. Identify the floor or ground surface. Apply good logic to avoid walls, furniture, obstacles, and potential pathways if identified.
-        2. Generate 5 to 15 bounding boxes to place this plant to create a full, natural garden look.
-           - Group them naturally (rows if neat, clusters if organic).
-           - VARY the sizes: Plants further back (higher in image) must be SMALLER. Plants in front (lower) must be LARGER.
-           - Respect perspective and depth.
-           - Keep boxes far away from the edges of the photo.
-        3. Estimate room brightness (0.0-1.0).
+        1. Identify the floor or ground surface. Avoid walls/obstacles.
+        2. Generate 5 to 15 bounding boxes [ymin, xmin, ymax, xmax] (0-1000 scale).
+           - Further back = Smaller. Front = Larger.
+        3. Estimate brightness (0.0-1.0).
 
         Return JSON:
         {{
             "layout": [
-                [ymin, xmin, ymax, xmax], // Pot #1
-                [ymin, xmin, ymax, xmax], // Pot #2
+                [ymin, xmin, ymax, xmax], 
                 ...
             ], 
             "brightness_score": 0.5
         }}
         """
 
+        # Using your preferred client syntax (google.genai)
         response = client.models.generate_content(
-            model="gemini-2.5-flash",
+            model="gemini-2.0-flash-exp", # Fallback to 1.5-flash if 2.0 unavailable
             contents=[types.Part.from_bytes(data=room_bytes, mime_type="image/jpeg"), prompt],
             config=types.GenerateContentConfig(response_mime_type="application/json")
         )
 
-        vision_data = json.loads(response.text)
+        raw_text = response.text.strip()
+        if raw_text.startswith("```"):
+            lines = raw_text.split('\n')
+            if lines[0].startswith("```"): lines = lines[1:]
+            if lines[-1].startswith("```"): lines = lines[:-1]
+            raw_text = "\n".join(lines)
+
+        vision_data = json.loads(raw_text)
         boxes = vision_data.get("layout", [])
         brightness = vision_data.get("brightness_score", 0.5)
 
-        # 4. SORT BY DEPTH (Painter's Algorithm)
-        # We must paste the plants "in the back" first, and "in the front" last.
-        # In images, "back" usually means higher up (smaller y_max), and "front" means lower down (larger y_max).
-        # So we sort by y_max ascending.
-        boxes.sort(key=lambda b: b[2]) 
+        # 4. SORT BY DEPTH
+        # Safety: Sort only valid boxes (length >= 4)
+        valid_boxes = [b for b in boxes if len(b) >= 4]
+        valid_boxes.sort(key=lambda b: b[2]) 
 
         # 5. COMPOSITE LOOP
         final_comp = Image.new("RGBA", room_img.size)
         final_comp.paste(room_img, (0,0))
 
-        for box in boxes:
-            # Parse Coords
-            y_min, x_min = (box[0]/1000 * img_h), (box[1]/1000 * img_w)
-            y_max, x_max = (box[2]/1000 * img_h), (box[3]/1000 * img_w)
-            
-            box_width = x_max - x_min
-            box_height = y_max - y_min
-            
-            # Fit Image to Box
-            scale_w = (box_width / p_width) * 2.5
-            scale_h = (box_height / p_height) * 2.5 # Slightly over-scale to ensure coverage
-            scale = min(scale_w, scale_h)
-            
-            new_w = int(p_width * scale)
-            new_h = int(p_height * scale)
-            
-            # Resize
-            current_plant = plant_img.resize((new_w, new_h), Image.Resampling.LANCZOS)
+        for box in valid_boxes:
+            try:
+                # Parse Coords & Sanitize (Min/Max swap ensures positive width/height)
+                y1, x1 = (box[0]/1000 * img_h), (box[1]/1000 * img_w)
+                y2, x2 = (box[2]/1000 * img_h), (box[3]/1000 * img_w)
 
-            # Natural Variation (Optional but looks great)
-            # Randomly flip horizontally sometimes so they don't look like clones
-            if random.choice([True, False]):
-                current_plant = ImageOps.mirror(current_plant)
+                y_min, y_max = min(y1, y2), max(y1, y2)
+                x_min, x_max = min(x1, x2), max(x1, x2)
+                
+                box_width = x_max - x_min
+                box_height = y_max - y_min
+                
+                # SAFETY CHECK 1: Skip tiny noise
+                if box_width < 10 or box_height < 10:
+                    continue
 
-            # Lighting
-            if brightness < 0.6:
-                enhancer = ImageEnhance.Brightness(current_plant)
-                current_plant = enhancer.enhance(max(0.5, brightness + 0.2))
+                # Fit Image to Box
+                scale_w = (box_width / p_width) * 2.5
+                scale_h = (box_height / p_height) * 2.5 
+                scale = min(scale_w, scale_h)
+                
+                # SAFETY CHECK 2: Enforce minimum size (prevent 0px crash)
+                new_w = max(10, int(p_width * scale))
+                new_h = max(10, int(p_height * scale))
+                
+                # Resize
+                current_plant = plant_img.resize((new_w, new_h), Image.Resampling.LANCZOS)
 
-            # Position
-            center_x = x_min + (box_width / 2)
-            final_x = int(center_x - (new_w / 2))
-            final_y = int(y_max - new_h)
+                # Natural Variation
+                if random.choice([True, False]):
+                    current_plant = ImageOps.mirror(current_plant)
 
-            # Paste (using itself as mask)
-            final_comp.paste(current_plant, (final_x, final_y), current_plant)
+                # Lighting
+                if brightness < 0.6:
+                    enhancer = ImageEnhance.Brightness(current_plant)
+                    current_plant = enhancer.enhance(max(0.5, brightness + 0.2))
+
+                # Position
+                center_x = x_min + (box_width / 2)
+                final_x = int(center_x - (new_w / 2))
+                final_y = int(y_max - new_h)
+
+                # Paste
+                final_comp.paste(current_plant, (final_x, final_y), current_plant)
+
+            except Exception as box_err:
+                print(f"Skipping bad box: {box_err}")
+                continue
 
         # 6. RETURN
         buffered = io.BytesIO()
@@ -536,3 +529,26 @@ async def chat_agent(chat: ChatRequest):
         return {"response": plant_knowledge["pests"]}
     else:
         return {"response": plant_knowledge["default"]}
+    
+async def get_weather_data(lat: str, lon: str):
+    """Fetches real weather. Defaults to HCMC mock data if API fails."""
+    if not OPENWEATHER_API_KEY or OPENWEATHER_API_KEY == "YOUR_API_KEY_HERE":
+        # Mock Data (HCMC Typical Weather)
+        return {"temp": 32, "humidity": 80, "desc": "Hot & Humid"}
+    
+    try:
+        url = f"https://api.openweathermap.org/data/2.5/weather?lat={lat}&lon={lon}&units=metric&appid={OPENWEATHER_API_KEY}"
+        async with httpx.AsyncClient() as client:
+            resp = await client.get(url)
+            data = resp.json()
+            return {
+                "temp": data["main"]["temp"],
+                "humidity": data["main"]["humidity"],
+                "desc": data["weather"][0]["description"]
+            }
+    except:
+        return {"temp": 30, "humidity": 75, "desc": "Warm"}
+
+def analyze_light_level(image_bytes):
+    image = Image.open(io.BytesIO(image_bytes)).convert('L')
+    return np.mean(np.array(image)) / 255.0

@@ -8,12 +8,13 @@ import type { Screen } from '../App';
 
 interface ScanScreenProps {
   onNavigate: (screen: Screen) => void;
+  // NEW PROP: To handle specific navigation with params
+  onNavigateToOrder?: (plantName: string) => void;
 }
 
 type ScanStep = 'camera' | 'analyzing' | 'results' | 'visualization';
 
-export function ScanScreen({ onNavigate }: ScanScreenProps) {
-  const [scanStep, setScanStep] = useState<ScanStep>('camera');
+export function ScanScreen({ onNavigate, onNavigateToOrder }: ScanScreenProps) {  const [scanStep, setScanStep] = useState<ScanStep>('camera');
   const [analysisProgress, setAnalysisProgress] = useState(0);
   
   // Camera & Image State
@@ -614,20 +615,6 @@ const ensureLandscape = (imageSrc: string): Promise<string> => {
                 </Card>
               ))}
             </div>
-
-            {/* Removed the generic "See Your Future Garden" button from here */}
-            
-            {/* Visualization Button (Leading to Step 4) */}
-            <div className="space-y-3">
-              <Button
-                onClick={() => setScanStep('visualization')}
-                className="w-full bg-green-600 hover:bg-green-700 shadow-lg shadow-green-600/20"
-                size="lg"
-              >
-                <Sparkles className="w-4 h-4 mr-2" />
-                See Your Future Garden (AI Preview)
-              </Button>
-            </div>
           </div>
         </div>
       )}
@@ -683,13 +670,6 @@ const ensureLandscape = (imageSrc: string): Promise<string> => {
                     </p>
                 </div>
             </div>
-
-            <Button
-                className="w-full bg-green-600 hover:bg-green-700 h-12 text-lg shadow-lg shadow-green-600/20"
-                size="lg"
-            >
-                Add to My Garden
-            </Button>
           </div>
         </div>
       )}
@@ -719,15 +699,23 @@ const ensureLandscape = (imageSrc: string): Promise<string> => {
 
             <div className="space-y-3 pt-2">
               <Button
-                className="w-full bg-green-600 hover:bg-green-700 h-12 text-lg shadow-lg shadow-green-600/20"
-                size="lg"
-              >
-                Order {selectedPlantForViz.name} Kit - ₫150,000
-              </Button>
+                  className="w-full bg-green-600 hover:bg-green-700 h-12 text-lg shadow-lg shadow-green-600/20"
+                  size="lg"
+                  onClick={() => {
+                      if (onNavigateToOrder) {
+                          // Pass the specific plant name to the Order Screen
+                          onNavigateToOrder(selectedPlantForViz.name);
+                      }
+                  }}
+               >
+                  Order {selectedPlantForViz.name} Kit
+               </Button>
+               <div className="h-12" />
             </div>
           </div>
         </div>
       )}
+    <div className="h-12" />
     </div>
   );
 }

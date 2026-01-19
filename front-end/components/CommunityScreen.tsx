@@ -314,6 +314,7 @@ export function CommunityScreen({ onNavigate }: CommunityScreenProps) {
         </div>,
         document.body
       )}
+    <div className="h-24"/>
     </div>
   );
 }

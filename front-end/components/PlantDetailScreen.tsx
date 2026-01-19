@@ -298,6 +298,7 @@ export function PlantDetailScreen({ plant, onBack }: PlantDetailScreenProps) {
           Capture Daily Photo
         </Button>
       </div>
+      <div className="h-24"/>
     </div>
   );
 }
