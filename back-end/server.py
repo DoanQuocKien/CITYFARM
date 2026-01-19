@@ -27,23 +27,27 @@ PLANT_DATABASE = [
     {
         "id": "1", "name": "Green Lettuce", "scientificName": "Lactuca sativa",
         "imageUrl": "https://images.unsplash.com/photo-1595735931739-0a99f2f0b0aa?auto=format&fit=crop&w=1000&q=80",
-        "minLight": 0.3, "maxLight": 0.8,
-        "minTemp": 15, "maxTemp": 28, # Lettuce hates heat (Vietnam risk!)
+        "minLight": 0.3, "maxLight": 0.8, "minTemp": 15, "maxTemp": 28,
         "difficulty": "Easy", "harvestDays": "30-35 days"
     },
     {
         "id": "2", "name": "Thai Chili", "scientificName": "Capsicum annuum",
         "imageUrl": "https://images.unsplash.com/photo-1592841200221-a6898f307baa?auto=format&fit=crop&w=1000&q=80",
-        "minLight": 0.7, "maxLight": 1.0, 
-        "minTemp": 20, "maxTemp": 35, # Loves heat
+        "minLight": 0.7, "maxLight": 1.0, "minTemp": 20, "maxTemp": 35,
         "difficulty": "Medium", "harvestDays": "60-80 days"
     },
     {
         "id": "3", "name": "Mint", "scientificName": "Mentha",
         "imageUrl": "https://images.unsplash.com/photo-1633916872730-7199a52e483b?auto=format&fit=crop&w=1000&q=80",
-        "minLight": 0.2, "maxLight": 0.7,
-        "minTemp": 15, "maxTemp": 32,
+        "minLight": 0.2, "maxLight": 0.7, "minTemp": 15, "maxTemp": 32,
         "difficulty": "Easy", "harvestDays": "40-50 days"
+    },
+    # NEW PLANT ADDED
+    {
+        "id": "4", "name": "Green Onion", "scientificName": "Allium fistulosum",
+        "imageUrl": "https://www.almanac.com/sites/default/files/styles/or/public/image_nodes/Untitled%20design%20%288%29_1.jpg?itok=leansz0S",
+        "minLight": 0.4, "maxLight": 1.0, "minTemp": 10, "maxTemp": 30,
+        "difficulty": "Easy", "harvestDays": "50-60 days"
     }
 ]
 
@@ -71,40 +75,27 @@ def analyze_light_level(image_bytes):
     return np.mean(np.array(image)) / 255.0
 
 # --- MOCK KIT DATABASE ---
-# These are the "3 types of QR code" you requested
 SMART_KITS = {
     "CITYFARM-TOMATO-01": {
-        "name": "Cherry Tomato",
-        "type": "Vegetable",
-        "harvestDays": 60,
-        "daysGrowing": 0, # Fresh kit starts at 0
-        "health": "healthy",
+        "name": "Cherry Tomato", "type": "Vegetable", "harvestDays": 60, "daysGrowing": 0, "health": "healthy",
         "imageUrl": "https://images.unsplash.com/photo-1592841200221-a6898f307baa?auto=format&fit=crop&w=1000&q=80",
-        "nextWatering": "Today, 5:00 PM",
-        "nextFertilizing": "In 14 days",
-        "progress": 0
+        "nextWatering": "Today, 5:00 PM", "nextFertilizing": "In 14 days", "progress": 0
     },
     "CITYFARM-LETTUCE-01": {
-        "name": "Green Lettuce",
-        "type": "Vegetable",
-        "harvestDays": 35,
-        "daysGrowing": 0,
-        "health": "healthy",
+        "name": "Green Lettuce", "type": "Vegetable", "harvestDays": 35, "daysGrowing": 0, "health": "healthy",
         "imageUrl": "https://images.unsplash.com/photo-1595735931739-0a99f2f0b0aa?auto=format&fit=crop&w=1000&q=80",
-        "nextWatering": "Tomorrow, 8:00 AM",
-        "nextFertilizing": "In 7 days",
-        "progress": 0
+        "nextWatering": "Tomorrow, 8:00 AM", "nextFertilizing": "In 7 days", "progress": 0
     },
     "CITYFARM-MINT-01": {
-        "name": "Peppermint",
-        "type": "Herb",
-        "harvestDays": 45,
-        "daysGrowing": 0,
-        "health": "healthy",
+        "name": "Peppermint", "type": "Herb", "harvestDays": 45, "daysGrowing": 0, "health": "healthy",
         "imageUrl": "https://images.unsplash.com/photo-1633916872730-7199a52e483b?auto=format&fit=crop&w=1000&q=80",
-        "nextWatering": "Today, 7:00 AM",
-        "nextFertilizing": "In 30 days",
-        "progress": 0
+        "nextWatering": "Today, 7:00 AM", "nextFertilizing": "In 30 days", "progress": 0
+    },
+    # NEW KIT ADDED
+    "CITYFARM-ONION-01": {
+        "name": "Green Onion", "type": "Herb", "harvestDays": 55, "daysGrowing": 0, "health": "healthy",
+        "imageUrl": "https://www.almanac.com/sites/default/files/styles/or/public/image_nodes/Untitled%20design%20%288%29_1.jpg?itok=leansz0S",
+        "nextWatering": "Tomorrow, 7:00 AM", "nextFertilizing": "In 15 days", "progress": 0
     }
 }
 
@@ -149,42 +140,46 @@ async def analyze_space(
     lat: str = Form("10.82"),
     lon: str = Form("106.62")
 ):
-    print(f"Analyzing plant suitability for: {lat}, {lon}...")
-    
     try:
-        # 1. Read the image
         image_bytes = await read_image_file(file)
 
-        # 2. Construct the Plant List for the AI
-        # We tell the AI strictly about the 3 plants you have.
+        # UPDATED PROMPT WITH GREEN ONION
         plant_list_text = """
-        1. Cherry Tomato (ID: CITYFARM-TOMATO-01) - Needs full sun (6-8 hours).
-        2. Green Lettuce (ID: CITYFARM-LETTUCE-01) - Prefers partial shade, cooler soil.
-        3. Peppermint (ID: CITYFARM-MINT-01) - Thrives in shade/partial sun, loves moisture.
+        1. Cherry Tomato (ID: CITYFARM-TOMATO-01) - Needs full sun.
+        2. Green Lettuce (ID: CITYFARM-LETTUCE-01) - Prefers partial shade, cool.
+        3. Peppermint (ID: CITYFARM-MINT-01) - Thrives in shade/moist.
+        4. Green Onion (ID: CITYFARM-ONION-01) - Versatile, likes sun, easy to grow.
         """
 
-        # 3. The Prompt
         prompt = f"""
-        You are an expert gardener. Look at this photo of a space.
-        
-        I have these 3 specific plants:
+        You are an expert gardener. Look at this photo.
+        I have these 4 specific plants:
         {plant_list_text}
         
         TASK:
         1. Analyze the light and environment in the photo.
-        2. Rank the 3 plants above from 'Best Fit' (highest match) to 'Worst Fit' (lowest match).
-        3. Provide a logic score (0-100) and reason (in short sentences) for each.
+        2. Rank the 4 plants above from 'Best Fit' (highest match) to 'Worst Fit' (lowest match).
+        3. Provide a logic score (0-100) and reason (in one short sentence) for each.
 
-        OUTPUT JSON format (Do not use Markdown):
+        OUTPUT JSON format (DO NOT USE MARKDOWN QUOTES ``` ```):
         {{
             "analysis": {{
-                "lightLevel": "High Sunlight/Partial Shade/Low Light",
+                "lightLevel": "High/Partial/Low",
                 "lightScore": 85,
                 "areaSize": "approx m2",
                 "climate": "predicted climate",
-                "explanation": "Brief reason about the light."
+                "explanation": "Reason."
             }},
             "recommendations": [
+                {{
+                    "id": "CITYFARM-ONION-01",
+                    "name": "Green Onion",
+                    "matchScore": 90,
+                    "reason": "Great spot for onions.",
+                    "imageUrl": "",
+                    "difficulty": "Easy",
+                    "harvestDays": "55"
+                }},
                 {{
                     "id": "CITYFARM-TOMATO-01",
                     "name": "Cherry Tomato",
@@ -279,6 +274,7 @@ async def visualize_garden(
         if "lettuce" in name_lower: filename = "lettuce.png"
         elif "mint" in name_lower:    filename = "mint.png"
         elif "tomato" in name_lower:  filename = "tomato.png"
+        elif "onion" in name_lower:   filename = "onion.png"
 
         server_dir = os.path.dirname(os.path.abspath(__file__))
         file_path = os.path.join(server_dir, "..", "img", filename)
@@ -407,25 +403,108 @@ class ChatRequest(BaseModel):
 # Ensure keys are lowercase for easier matching
 KNOWLEDGE_BASE = {
     "tomato": {
-        "water": "Tomatoes need deep watering. Keep the soil consistently moist but not waterlogged to prevent blossom end rot.",
-        "sun": "They love sun! Ensure at least 6-8 hours of direct sunlight.",
-        "yellow": "Yellow leaves on tomatoes often indicate Nitrogen deficiency or early blight. Check the lower leaves first.",
-        "pests": "Watch out for aphids and hornworms. Neem oil is a good organic treatment.",
-        "default": "I am your Tomato Expert. Ask me about watering, pruning suckers, or pests!"
+        "water": (
+            "Tomatoes are thirsty but hate 'wet feet'. Water deeply 2-3 times a week rather than sprinkling daily. "
+            "Consistency is key—if you water irregularly, the fruit skins might split or you'll get Blossom End Rot "
+            "(black bottoms on fruits). Avoid getting water on the leaves to prevent fungus."
+        ),
+        "sun": (
+            "Tomatoes are sun-worshippers! They need 6-8 hours of direct, intense sunlight. "
+            "If your plant looks 'leggy' (tall and thin with few leaves), it's reaching for light. "
+            "In extreme heat (>35°C), they might stop setting fruit—provide some afternoon shade if that happens."
+        ),
+        "yellow": (
+            "Yellow leaves can mean a few things. 1) Bottom leaves turning yellow? Usually just lack of Nitrogen or old age—snip them off. "
+            "2) Yellow spots with brown centers? Could be Early Blight (fungus). "
+            "3) Yellowing between veins? Magnesium deficiency. Try adding a bit of Epsom salts."
+        ),
+        "pests": (
+            "Common enemies: 1) Aphids (sticky sap on leaves)—spray with soapy water. "
+            "2) Tomato Hornworms (huge green caterpillars)—pick them off by hand! "
+            "3) Whiteflies—try planting basil nearby as a companion to repel them."
+        ),
+        "default": (
+            "I'm your Cherry Tomato expert. Remember to 'prune the suckers' (the little shoots between the main stem and branches) "
+            "to focus energy on fruit production. Shake the flowers gently to help pollination!"
+        )
     },
     "lettuce": {
-        "water": "Lettuce has shallow roots. Water frequently/lightly to keep soil cool and moist.",
-        "sun": "Partial shade is best in hot climates like HCMC. Too much sun makes it bitter (bolting).",
-        "yellow": "Yellowing often means overwatering or lack of nitrogen.",
-        "pests": "Slugs love lettuce. Try crushing eggshells around the base.",
-        "default": "I am your Lettuce Specialist. Keep me cool and I'll grow fast!"
+        "water": (
+            "Lettuce has shallow roots, so it needs consistent moisture. If the soil dries out, the leaves turn bitter. "
+            "Water gently in the morning so leaves dry off before nightfall—this prevents mold. "
+            "Mulch around the base to keep the soil cool."
+        ),
+        "sun": (
+            "In hot climates like HCMC, Lettuce prefers morning sun and afternoon shade. "
+            "If it gets too hot/sunny, the plant will 'bolt' (send up a flower stalk), making the leaves bitter and inedible. "
+            "If you see a tall stalk forming, harvest immediately!"
+        ),
+        "yellow": (
+            "Yellowing is tricky with Lettuce. 1) Pale/Yellow overall? Likely Nitrogen deficiency or not enough light. "
+            "2) Yellow/Brown mushy lower leaves? Root rot from overwatering. Let the soil dry slightly. "
+            "3) Tip burn (brown edges)? Inconsistent watering."
+        ),
+        "pests": (
+            "Slugs and snails love salad as much as you do. Check underneath leaves and pots. "
+            "If you see squiggly white lines on leaves, that's Leaf Miners—pinch off those leaves. "
+            "Aphids also hide in the center folds."
+        ),
+        "default": (
+            "I'm your Lettuce specialist. Pro-tip: Don't pull the whole plant! Use the 'Cut and Come Again' method—"
+            "harvest just the outer leaves, and the center will keep growing new ones for weeks."
+        )
     },
     "mint": {
-        "water": "Mint loves moisture. Don't let it dry out completely.",
-        "sun": "Mint is hardy but prefers partial shade in the afternoon.",
-        "yellow": "Yellow leaves? You might be overwatering, or it's root bound.",
-        "pests": "Mint is actually a natural pest repellent! But watch for spider mites.",
-        "default": "I'm your Mint Buddy. Warning: I spread fast, so keep me in a pot!"
+        "water": (
+            "Mint is hard to kill but loves moisture. Keep the soil consistently damp, like a wrung-out sponge. "
+            "If it wilts, water immediately, and it will likely bounce back within hours. "
+            "However, never let it sit in stagnant water."
+        ),
+        "sun": (
+            "Mint is versatile. It tolerates full sun but actually produces better flavor in partial shade. "
+            "If stems are stretching out long and thin, move it to a brighter spot. "
+            "If leaves look scorched/crispy, it's getting too much direct noon sun."
+        ),
+        "yellow": (
+            "1) Orange/Yellow dusty spots? That's Mint Rust fungus—remove infected leaves immediately and improve airflow. "
+            "2) Yellowing near the bottom? Your pot might be too small! Mint roots are aggressive and might be 'root bound'."
+        ),
+        "pests": (
+            "Mint is a natural pest repellent for other plants! But it can get Spider Mites (look for tiny webs) "
+            "or Loopers (small green caterpillars). A strong spray of water usually knocks them off."
+        ),
+        "default": (
+            "I'm your Mint Buddy. Warning: I have aggressive roots called 'runners'. "
+            "ALWAYS keep me in my own pot, or I will take over your entire garden! "
+            "Pinch off the top leaves regularly to make me grow bushier."
+        )
+    },
+    "onion": {
+        "water": (
+            "Green Onions have a small root system. Keep the soil evenly moist but well-drained. "
+            "Soggy soil causes the bulbs to rot and smell bad. "
+            "If the tips turn brown and dry, you might be underwatering."
+        ),
+        "sun": (
+            "We need energy! Give us at least 6 hours of sun. "
+            "If the stalks are floppy and pale, they aren't getting enough light. "
+            "They tolerate heat well but appreciate a breeze."
+        ),
+        "yellow": (
+            "1) Silver/White patches? Thrips (tiny bugs) are eating the green pigment. "
+            "2) Yellowing from the tip down? Natural aging, or inconsistent watering. "
+            "3) Mushy yellow base? Bulb rot—stop watering immediately."
+        ),
+        "pests": (
+            "Thrips are the main enemy—they look like tiny dark threads in the folds of the onion. "
+            "Onion Maggots can also attack the roots. "
+            "Generally, we are very hardy against most pests."
+        ),
+        "default": (
+            "I'm your Green Onion assistant. Did you know you can regrow me? "
+            "Cut the green stalk for cooking, leave 1 inch of the white base, and I'll grow back in days! "
+            "Harvest the outer leaves first to let the center keep growing."
+        )
     }
 }
 

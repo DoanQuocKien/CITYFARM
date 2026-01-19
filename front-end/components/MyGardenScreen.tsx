@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom'; // CRITICAL IMPORT
 import { Plus, TrendingUp, Droplet, Sun, QrCode, X, Loader2, ArrowRight } from 'lucide-react';
 import { Button } from './ui/button';
@@ -18,6 +18,14 @@ export function MyGardenScreen({ onNavigate, onPlantClick }: MyGardenScreenProps
   const [isScanning, setIsScanning] = useState(false);
   const [scanInput, setScanInput] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
+
+  useEffect(() => {
+    const handleEsc = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setIsScanning(false);
+    };
+    window.addEventListener('keydown', handleEsc);
+    return () => window.removeEventListener('keydown', handleEsc);
+  }, []);
 
   // Initial Data
   const [plants, setPlants] = useState<Plant[]>([
@@ -59,6 +67,19 @@ export function MyGardenScreen({ onNavigate, onPlantClick }: MyGardenScreenProps
       nextWatering: 'Today, 3:00 PM',
       nextFertilizing: 'Tomorrow',
       progress: 51,
+    },
+    {
+      id: '4',
+      name: 'Green Onion',
+      type: 'Herb',
+      plantedDate: '2025-12-24', // Calculated to be approx 27 days ago
+      daysGrowing: 27,
+      harvestDays: 55,
+      health: 'warning',
+      imageUrl: 'https://www.almanac.com/sites/default/files/styles/or/public/image_nodes/Untitled%20design%20%288%29_1.jpg?itok=leansz0S',
+      nextWatering: 'Tomorrow, 7:00 AM',
+      nextFertilizing: 'In 6 days',
+      progress: 49, // ~27/55
     }
   ]);
 
@@ -119,13 +140,26 @@ export function MyGardenScreen({ onNavigate, onPlantClick }: MyGardenScreenProps
         </Button>
       </header>
 
-      {/* --- QR SCANNER MODAL (Fixed with Portal) --- */}
+      {/* --- QR SCANNER MODAL --- */}
       {isScanning && createPortal(
-        <div className="fixed inset-0 z-[9999] bg-black/80 flex items-center justify-center p-6 animate-in fade-in duration-200 backdrop-blur-sm">
-           <div className="bg-white rounded-2xl w-full max-w-sm overflow-hidden shadow-2xl relative">
+        <div 
+            className="fixed inset-0 z-[9999] bg-black/80 flex items-center justify-center p-6 animate-in fade-in duration-200 backdrop-blur-sm"
+            onClick={() => setIsScanning(false)} // FEATURE: Escape by clicking background
+        >
+           <div 
+             className="bg-white rounded-2xl w-full max-w-sm overflow-hidden shadow-2xl relative"
+             onClick={(e) => e.stopPropagation()} // Prevent closing when clicking inside box
+           >
+              {/* HEADER WITH SIMPLE X BUTTON */}
               <div className="p-4 border-b flex justify-between items-center bg-gray-50">
                  <h3 className="font-bold text-lg text-gray-900">Activate Smart Kit</h3>
-                 <button onClick={() => setIsScanning(false)} className="p-2 hover:bg-gray-200 rounded-full">
+                 
+                 {/* FEATURE: The Simple X Button */}
+                 <button 
+                    onClick={() => setIsScanning(false)} 
+                    className="w-8 h-8 flex items-center justify-center hover:bg-gray-200 rounded-full transition-colors"
+                    aria-label="Close"
+                 >
                     <X className="w-5 h-5 text-gray-500" />
                  </button>
               </div>
@@ -145,33 +179,42 @@ export function MyGardenScreen({ onNavigate, onPlantClick }: MyGardenScreenProps
                     <p className="text-[10px] text-center text-gray-400 mb-2 uppercase font-bold tracking-wider">
                         Developer Mode: Simulate Scan
                     </p>
-                    <div className="grid grid-cols-3 gap-2">
+                    <div className="grid grid-cols-2 gap-2">
                        <Button 
                          variant="outline" 
-                         className="text-xs h-auto py-2 flex-col gap-1 hover:border-green-500 hover:bg-green-50 hover:text-green-700 bg-white"
+                         className="text-xs h-auto py-3 flex-col gap-1 hover:border-green-500 hover:bg-green-50 hover:text-green-700 bg-white"
                          onClick={() => handleScanSubmit("CITYFARM-TOMATO-01")}
                          disabled={isProcessing}
                        >
-                         <span className="text-lg">🍅</span>
+                         <span className="text-xl">🍅</span>
                          Tomato
                        </Button>
                        <Button 
                          variant="outline" 
-                         className="text-xs h-auto py-2 flex-col gap-1 hover:border-green-500 hover:bg-green-50 hover:text-green-700 bg-white"
+                         className="text-xs h-auto py-3 flex-col gap-1 hover:border-green-500 hover:bg-green-50 hover:text-green-700 bg-white"
                          onClick={() => handleScanSubmit("CITYFARM-LETTUCE-01")}
                          disabled={isProcessing}
                        >
-                         <span className="text-lg">🥬</span>
+                         <span className="text-xl">🥬</span>
                          Lettuce
                        </Button>
                        <Button 
                          variant="outline" 
-                         className="text-xs h-auto py-2 flex-col gap-1 hover:border-green-500 hover:bg-green-50 hover:text-green-700 bg-white"
+                         className="text-xs h-auto py-3 flex-col gap-1 hover:border-green-500 hover:bg-green-50 hover:text-green-700 bg-white"
                          onClick={() => handleScanSubmit("CITYFARM-MINT-01")}
                          disabled={isProcessing}
                        >
-                         <span className="text-lg">🌿</span>
+                         <span className="text-xl">🌿</span>
                          Mint
+                       </Button>
+                       <Button 
+                         variant="outline" 
+                         className="text-xs h-auto py-3 flex-col gap-1 hover:border-green-500 hover:bg-green-50 hover:text-green-700 bg-white"
+                         onClick={() => handleScanSubmit("CITYFARM-ONION-01")}
+                         disabled={isProcessing}
+                       >
+                         <span className="text-xl">🧅</span>
+                         Onion
                        </Button>
                     </div>
                  </div>
@@ -196,9 +239,9 @@ export function MyGardenScreen({ onNavigate, onPlantClick }: MyGardenScreenProps
               </div>
            </div>
         </div>,
-        document.body // Portal Target
+        document.body
       )}
-
+      
       {/* Main Content */}
       <div className="px-6 py-6 space-y-6">
         {/* Quick Stats Grid */}
