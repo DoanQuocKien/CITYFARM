@@ -1,8 +1,10 @@
 import numpy as np
 from fastapi import FastAPI, UploadFile, File, Form
 from fastapi.middleware.cors import CORSMiddleware
-from PIL import Image
+from PIL import Image, ImageEnhance, ImageOps
+import random
 import io
+import os
 import httpx  # For making weather API calls
 
 app = FastAPI()
@@ -125,64 +127,270 @@ async def scan_kit(code: str = Form(...)):
     
     return {"status": "success", "plant": new_plant}
 
+from fastapi.responses import JSONResponse
+from google import genai
+from google.genai import types
+
+API_KEY = "AIzaSyBxV4aiIhlc6-CBLItHDikRWi0CBTZj8w0" 
+
+client = genai.Client(api_key=API_KEY)
+
+# --- HELPER: Convert UploadFile to Bytes ---
+async def read_image_file(file: UploadFile) -> bytes:
+    return await file.read()
+
+# --- 1. REAL ANALYSIS (Replaces the Mock Logic) ---
 @app.post("/api/scan/analyze")
 async def analyze_space(
     file: UploadFile = File(...),
-    lat: str = Form("10.82"), # Default to HCMC latitude
+    lat: str = Form("10.82"),
     lon: str = Form("106.62")
 ):
-    # 1. Parallel Processing: Analyze Image + Fetch Weather
-    contents = await file.read()
-    brightness = analyze_light_level(contents)
-    weather = await get_weather_data(lat, lon)
+    print(f"Analyzing plant suitability for: {lat}, {lon}...")
     
-    current_temp = weather['temp']
+    try:
+        # 1. Read the image
+        image_bytes = await read_image_file(file)
 
-    # 2. Logic: The "Smart" Scoring Engine
-    recommendations = []
-    for plant in PLANT_DATABASE:
-        score = 100
-        reasons = []
+        # 2. Construct the Plant List for the AI
+        # We tell the AI strictly about the 3 plants you have.
+        plant_list_text = """
+        1. Cherry Tomato (ID: CITYFARM-TOMATO-01) - Needs full sun (6-8 hours).
+        2. Green Lettuce (ID: CITYFARM-LETTUCE-01) - Prefers partial shade, cooler soil.
+        3. Peppermint (ID: CITYFARM-MINT-01) - Thrives in shade/partial sun, loves moisture.
+        """
 
-        # --- Light Check ---
-        if plant["minLight"] <= brightness <= plant["maxLight"]:
-            reasons.append("Perfect light match")
-        elif abs(brightness - plant["minLight"]) < 0.2:
-            score -= 20
-            reasons.append("Light is okay, but not ideal")
-        else:
-            score -= 50
-            reasons.append("Lighting is poor for this plant")
-
-        # --- Weather Check (The new logic) ---
-        if current_temp > plant["maxTemp"]:
-            score -= 40 # Heavy penalty for heat sensitivity
-            reasons.append(f"Too hot right now ({current_temp}°C)")
-        elif current_temp < plant["minTemp"]:
-            score -= 40
-            reasons.append("Too cold right now")
-        else:
-            reasons.append("Climate friendly")
-
-        # Finalize Plant Object
-        plant_copy = plant.copy()
-        plant_copy["matchScore"] = max(0, score) # No negative scores
-        plant_copy["reason"] = ". ".join(reasons[:2]) # Show top 2 reasons
+        # 3. The Prompt
+        prompt = f"""
+        You are an expert gardener. Look at this photo of a space.
         
-        recommendations.append(plant_copy)
+        I have these 3 specific plants:
+        {plant_list_text}
+        
+        TASK:
+        1. Analyze the light and environment in the photo.
+        2. Rank the 3 plants above from 'Best Fit' (highest match) to 'Worst Fit' (lowest match).
+        3. Provide a logic score (0-100) and reason (in short sentences) for each.
 
-    # Sort: Highest score first
-    recommendations.sort(key=lambda x: x["matchScore"], reverse=True)
+        OUTPUT JSON format (Do not use Markdown):
+        {{
+            "analysis": {{
+                "lightLevel": "High Sunlight/Partial Shade/Low Light",
+                "lightScore": 85,
+                "areaSize": "approx m2",
+                "climate": "predicted climate",
+                "explanation": "Brief reason about the light."
+            }},
+            "recommendations": [
+                {{
+                    "id": "CITYFARM-TOMATO-01",
+                    "name": "Cherry Tomato",
+                    "matchScore": 95,
+                    "reason": "This spot has intense direct sun, perfect for tomatoes.",
+                    "imageUrl": "",
+                    "difficulty": "Medium",
+                    "harvestDays": "60"
+                }},
+                {{
+                    "id": "CITYFARM-LETTUCE-01",
+                    "name": "Green Lettuce",
+                    "matchScore": 40,
+                    "reason": "Too hot and sunny here; lettuce would bolt.",
+                    "imageUrl": "",
+                    "difficulty": "Easy",
+                    "harvestDays": "35"
+                }},
+                {{
+                    "id": "CITYFARM-MINT-01",
+                    "name": "Peppermint",
+                    "matchScore": 30,
+                    "reason": "Likely to dry out too fast in this full sun.",
+                    "imageUrl": "",
+                    "difficulty": "Easy",
+                    "harvestDays": "45"
+                }}
+            ]
+        }}
+        """
 
-    return {
-        "analysis": {
-            "lightLevel": "High Sunlight" if brightness > 0.6 else "Partial Shade",
-            "lightScore": round(brightness * 100),
-            "weather": weather, # Pass weather back to frontend
-            "climate": f"{weather['temp']}°C, {weather['desc']}"
-        },
-        "recommendations": recommendations
-    }
+        # 4. Call Gemini
+        response = client.models.generate_content(
+            model="gemini-2.5-flash",
+            contents=[
+                types.Part.from_bytes(data=image_bytes, mime_type="image/jpeg"),
+                prompt
+            ],
+            config=types.GenerateContentConfig(
+                response_mime_type="application/json"
+            )
+        )
+        
+        # 5. Parse JSON
+        import json
+        raw_text = response.text.strip()
+        if raw_text.startswith("```"):
+            lines = raw_text.split('\n')
+            if lines[0].startswith("```"): lines = lines[1:]
+            if lines[-1].startswith("```"): lines = lines[:-1]
+            raw_text = "\n".join(lines)
+
+        result_data = json.loads(raw_text)
+
+        # 6. Re-attach your correct Image URLs and Data
+        # The AI does the sorting, but we ensure the image/data is 100% correct from your DB.
+        for rec in result_data.get("recommendations", []):
+            plant_id = rec.get("id")
+            if plant_id in SMART_KITS:
+                original_data = SMART_KITS[plant_id]
+                rec["imageUrl"] = original_data["imageUrl"] # Restore correct image
+                rec["harvestDays"] = f"{original_data['harvestDays']} days"
+                rec["name"] = original_data["name"] # Ensure accurate name
+        
+        return result_data
+
+    except Exception as e:
+        print(f"Error: {e}")
+        # Safe fallback to prevent crash
+        return {
+            "error": str(e),
+            "analysis": {"lightLevel": "Error", "lightScore": 0},
+            "recommendations": []
+        }
+    
+import base64
+import json
+
+# --- 2. SMART "AR" VISUALIZATION (With Safety Margins) ---
+@app.post("/api/visualize")
+async def visualize_garden(
+    file: UploadFile = File(...),
+    plantName: str = Form(...)
+):
+    print(f"Generating Lush Garden for {plantName}...")
+    
+    try:
+        # 1. SETUP: Identify Plant & Load Local Image
+        filename = "tomato.png"
+        name_lower = plantName.lower()
+        
+        if "lettuce" in name_lower: filename = "lettuce.png"
+        elif "mint" in name_lower:    filename = "mint.png"
+        elif "tomato" in name_lower:  filename = "tomato.png"
+
+        server_dir = os.path.dirname(os.path.abspath(__file__))
+        file_path = os.path.join(server_dir, "..", "img", filename)
+        
+        try:
+            plant_img = Image.open(file_path).convert("RGBA")
+        except FileNotFoundError:
+            return {"error": f"Image {filename} not found"}, 404
+
+        # Extract stats
+        p_width, p_height = plant_img.size
+        aspect_ratio = p_width / p_height
+
+        # 2. PREPARE ROOM IMAGE
+        room_bytes = await read_image_file(file)
+        room_img = Image.open(io.BytesIO(room_bytes)).convert("RGBA")
+        img_w, img_h = room_img.size
+
+        # 3. ASK GEMINI (The "Landscape Architect")
+        # We ask for a LIST of boxes this time.
+        prompt = f"""
+        Act as a landscape architect. Look at this room/balcony photo.
+        I want to create a LUSH GARDEN by filling the available floor/surface space with MANY pots of the same plant.
+        
+        PLANT INFO:
+        - Name: "{plantName}"
+        - Image Aspect Ratio: {aspect_ratio:.2f} (Width/Height)
+        
+        TASK:
+        1. Identify the floor or ground surface. Apply good logic to avoid walls, furniture, obstacles, and potential pathways if identified.
+        2. Generate 5 to 15 bounding boxes to place this plant to create a full, natural garden look.
+           - Group them naturally (rows if neat, clusters if organic).
+           - VARY the sizes: Plants further back (higher in image) must be SMALLER. Plants in front (lower) must be LARGER.
+           - Respect perspective and depth.
+           - Keep boxes far away from the edges of the photo.
+        3. Estimate room brightness (0.0-1.0).
+
+        Return JSON:
+        {{
+            "layout": [
+                [ymin, xmin, ymax, xmax], // Pot #1
+                [ymin, xmin, ymax, xmax], // Pot #2
+                ...
+            ], 
+            "brightness_score": 0.5
+        }}
+        """
+
+        response = client.models.generate_content(
+            model="gemini-2.5-flash",
+            contents=[types.Part.from_bytes(data=room_bytes, mime_type="image/jpeg"), prompt],
+            config=types.GenerateContentConfig(response_mime_type="application/json")
+        )
+
+        vision_data = json.loads(response.text)
+        boxes = vision_data.get("layout", [])
+        brightness = vision_data.get("brightness_score", 0.5)
+
+        # 4. SORT BY DEPTH (Painter's Algorithm)
+        # We must paste the plants "in the back" first, and "in the front" last.
+        # In images, "back" usually means higher up (smaller y_max), and "front" means lower down (larger y_max).
+        # So we sort by y_max ascending.
+        boxes.sort(key=lambda b: b[2]) 
+
+        # 5. COMPOSITE LOOP
+        final_comp = Image.new("RGBA", room_img.size)
+        final_comp.paste(room_img, (0,0))
+
+        for box in boxes:
+            # Parse Coords
+            y_min, x_min = (box[0]/1000 * img_h), (box[1]/1000 * img_w)
+            y_max, x_max = (box[2]/1000 * img_h), (box[3]/1000 * img_w)
+            
+            box_width = x_max - x_min
+            box_height = y_max - y_min
+            
+            # Fit Image to Box
+            scale_w = (box_width / p_width) * 2.5
+            scale_h = (box_height / p_height) * 2.5 # Slightly over-scale to ensure coverage
+            scale = min(scale_w, scale_h)
+            
+            new_w = int(p_width * scale)
+            new_h = int(p_height * scale)
+            
+            # Resize
+            current_plant = plant_img.resize((new_w, new_h), Image.Resampling.LANCZOS)
+
+            # Natural Variation (Optional but looks great)
+            # Randomly flip horizontally sometimes so they don't look like clones
+            if random.choice([True, False]):
+                current_plant = ImageOps.mirror(current_plant)
+
+            # Lighting
+            if brightness < 0.6:
+                enhancer = ImageEnhance.Brightness(current_plant)
+                current_plant = enhancer.enhance(max(0.5, brightness + 0.2))
+
+            # Position
+            center_x = x_min + (box_width / 2)
+            final_x = int(center_x - (new_w / 2))
+            final_y = int(y_max - new_h)
+
+            # Paste (using itself as mask)
+            final_comp.paste(current_plant, (final_x, final_y), current_plant)
+
+        # 6. RETURN
+        buffered = io.BytesIO()
+        final_comp.convert("RGB").save(buffered, format="PNG")
+        b64_img = base64.b64encode(buffered.getvalue()).decode('utf-8')
+        
+        return {"image": f"data:image/png;base64,{b64_img}"}
+
+    except Exception as e:
+        print(f"Error visualizing: {e}")
+        return {"error": str(e)}, 500
 
 from pydantic import BaseModel
 

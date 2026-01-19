@@ -63,7 +63,8 @@ export function PlantDetailScreen({ plant, onBack }: PlantDetailScreenProps) {
   return (
     <div className="min-h-screen bg-white relative pb-32">
       {/* Header Image Area */}
-      <div className="relative h-56">
+      {/* CHANGED: Fixed height to h-64 (256px) - large enough for text, small enough to be a banner */}
+      <div className="relative h-64">
         <img
           src={plant.imageUrl}
           alt={plant.name}
@@ -108,7 +109,7 @@ export function PlantDetailScreen({ plant, onBack }: PlantDetailScreenProps) {
             className="h-10 bg-white/20 hover:bg-white/30 backdrop-blur-md border border-white/40 text-white shadow-lg transition-all"
           >
              <Bot className="w-4 h-4 mr-2 text-yellow-300" />
-             Gardening Assistance
+             Gardening Assistant
           </Button>
         </div>
       </div>

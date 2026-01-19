@@ -82,24 +82,28 @@ export function ScanScreen({ onNavigate }: ScanScreenProps) {
     setIsCameraActive(true);
   };
 
-  const handleCapture = () => {
+  const handleCapture = async () => {
     if (videoRef.current && canvasRef.current) {
       const video = videoRef.current;
       const canvas = canvasRef.current;
       
+      // Capture the raw frame first
       canvas.width = video.videoWidth;
       canvas.height = video.videoHeight;
       
       const context = canvas.getContext('2d');
       if (context) {
         context.drawImage(video, 0, 0, canvas.width, canvas.height);
-        const imageDataUrl = canvas.toDataURL('image/jpeg');
+        const rawImage = canvas.toDataURL('image/jpeg');
         
-        setCapturedImage(imageDataUrl);
+        // --- NEW: Force Landscape ---
+        const fixedImage = await ensureLandscape(rawImage);
+        
+        setCapturedImage(fixedImage);
         stopCamera();
         
-        // IMPORTANT: Pass the result directly here too
-        startAnalysis(imageDataUrl);
+        // Send the FIXED image to analysis
+        startAnalysis(fixedImage);
       }
     }
   };
@@ -123,6 +127,38 @@ export function ScanScreen({ onNavigate }: ScanScreenProps) {
       reader.readAsDataURL(file);
     }
   };
+
+  // --- HELPER: Force Image to Landscape ---
+const ensureLandscape = (imageSrc: string): Promise<string> => {
+  return new Promise((resolve) => {
+    const img = new Image();
+    img.onload = () => {
+      // 1. Check if it's Vertical (Portrait)
+      if (img.height > img.width) {
+        console.log("Vertical image detected. Rotating to Landscape...");
+        
+        // 2. Setup Canvas with Swapped Dimensions
+        const canvas = document.createElement('canvas');
+        canvas.width = img.height;
+        canvas.height = img.width;
+        
+        const ctx = canvas.getContext('2d');
+        if (ctx) {
+          // 3. Rotate Context -90 degrees
+          ctx.translate(0, img.width); // Move origin to bottom-left
+          ctx.rotate(-90 * Math.PI / 180); // Rotate counter-clockwise
+          ctx.drawImage(img, 0, 0); // Draw
+          
+          resolve(canvas.toDataURL('image/jpeg')); // Return new landscape image
+          return;
+        }
+      }
+      // If already landscape, just return original
+      resolve(imageSrc);
+    };
+    img.src = imageSrc;
+  });
+};
 
 
   // 1. Add state for dynamic data
@@ -246,9 +282,40 @@ export function ScanScreen({ onNavigate }: ScanScreenProps) {
   ];
 
   const [selectedPlantForViz, setSelectedPlantForViz] = useState<any>(null); // NEW: Track selected plant
-  const handleVisualize = (plant: any) => {
-  setSelectedPlantForViz(plant);
-  setScanStep('visualization');
+  const [visualizedImage, setVisualizedImage] = useState<string | null>(null);
+  const [isVisualizing, setIsVisualizing] = useState(false);
+
+  const handleVisualize = async (plant: any) => {
+    setSelectedPlantForViz(plant);
+    setScanStep('visualization');
+    setIsVisualizing(true); // Show loading spinner
+    
+    try {
+        // Prepare form data
+        const formData = new FormData();
+        // Convert base64 capturedImage back to a blob to send to server
+        const res = await fetch(capturedImage!); 
+        const blob = await res.blob();
+        formData.append('file', blob, 'room.jpg');
+        formData.append('plantName', plant.name);
+
+        // Call the new Python endpoint
+        const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+        const response = await fetch(`${API_URL}/api/visualize`, {
+            method: 'POST',
+            body: formData,
+        });
+
+        const data = await response.json();
+        
+        if (data.image) {
+            setVisualizedImage(data.image); // Set the AI-generated image
+        }
+    } catch (e) {
+        console.error("Visualization failed", e);
+    } finally {
+        setIsVisualizing(false);
+    }
   };
 
   return (
@@ -581,57 +648,24 @@ export function ScanScreen({ onNavigate }: ScanScreenProps) {
              </Button>
           </div>
 
-          {/* Step 4: AI Visualization (Improved Realism) */}
-          {scanStep === 'visualization' && capturedImage && selectedPlantForViz && (
-            <div className="pb-6 animate-in fade-in zoom-in-95 duration-500 h-full bg-white flex flex-col">
-
-              {/* AR Viewport */}
-              <div className="relative w-full flex-1 bg-gray-900 overflow-hidden">
-                
-                  {/* 1. User's Photo (The Room) */}
-                  <img
-                    src={capturedImage}
-                    alt="Room"
-                    className="w-full h-full object-cover opacity-90"
-                  />
-                  
-                  {/* 2. "Floor" Gradient - Helps blend the feet */}
-                  <div className="absolute bottom-0 left-0 right-0 h-1/3 bg-gradient-to-t from-black/40 to-transparent pointer-events-none" />
-
-                  {/* 3. The Plant Overlay (Positioned on "Floor") */}
-                  <div 
-                    className="absolute left-1/2 transform -translate-x-1/2"
-                    style={{ 
-                        bottom: '15%', // Heuristic: Floor is usually at the bottom
-                        perspective: '1000px' // Enables 3D rotation effect
-                    }}
-                  >
-                    {/* Container for Perspective Tricks */}
-                    <div className="relative group flex flex-col items-center">
-                        
-                        {/* A. The Contact Shadow (Crucial for realism) */}
-                        <div className="absolute -bottom-4 w-32 h-8 bg-black/60 blur-md rounded-[100%] transform scale-x-150" />
-                        
-                        {/* B. The Plant Image */}
-                        {/* We remove the 'rounded-full' to let the plant shape stand naturally */}
-                        <img 
-                          src={selectedPlantForViz.imageUrl} 
-                          className="w-48 h-48 object-cover rounded-2xl drop-shadow-2xl z-10" // Add rounded-2xl if using square photos
-                          style={{
-                              // Visual Trick: Tilt it slightly back to match floor perspective
-                              transform: 'rotateX(10deg)', 
-                              transformOrigin: 'bottom center'
-                          }}
-                          alt="Projected plant"
-                        />
-
-                        {/* C. The Label (Floating above) */}
-                        <div className="absolute -top-12 bg-white/90 backdrop-blur text-xs font-semibold px-3 py-1.5 rounded-lg shadow-lg border border-white/50 text-green-800 animate-bounce">
-                          Start {selectedPlantForViz.name} here?
-                          <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-2 h-2 bg-white/90 rotate-45"></div>
-                        </div>
-                    </div>
-                  </div>
+          {/* Step 4: AI Visualization*/}
+          {scanStep === 'visualization' && (
+            <div className="pb-6 h-full bg-white flex flex-col">
+              {/* Image Area */}
+              <div className="relative w-full flex-1 bg-gray-900 overflow-hidden flex items-center justify-center">
+                  {isVisualizing ? (
+                      <div className="text-white text-center">
+                          <Sparkles className="w-10 h-10 animate-spin mx-auto mb-4 text-green-400" />
+                          <p>Planting your {selectedPlantForViz.name}...</p>
+                      </div>
+                  ) : (
+                      // Show the AI Generated Image if available, otherwise fallback to original
+                      <img
+                        src={visualizedImage || capturedImage} 
+                        alt="Future Garden"
+                        className="w-full h-full object-contain"
+                      />
+                  )}
               </div>
 
           {/* Bottom Action Sheet */}
