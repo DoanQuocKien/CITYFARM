@@ -130,8 +130,11 @@ async def scan_kit(code: str = Form(...)):
 from fastapi.responses import JSONResponse
 from google import genai
 from google.genai import types
+from dotenv import load_dotenv
 
-API_KEY = "AIzaSyBxV4aiIhlc6-CBLItHDikRWi0CBTZj8w0" 
+load_dotenv()
+
+API_KEY = os.getenv("GOOGLE_API_KEY")
 
 client = genai.Client(api_key=API_KEY)
 

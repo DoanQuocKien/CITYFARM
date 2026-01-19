@@ -7,3 +7,5 @@ httpx
 pillow
 google-genai
 python-multipart
+requests
+python-dotenv
