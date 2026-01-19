@@ -256,7 +256,7 @@ async def visualize_garden(
         elif "onion" in name_lower:   filename = "onion.png"
 
         server_dir = os.path.dirname(os.path.abspath(__file__))
-        file_path = os.path.join(server_dir, "..", "img", filename)
+        file_path = os.path.join(server_dir, "..", "public\img", filename)
         
         try:
             plant_img = Image.open(file_path).convert("RGBA")
