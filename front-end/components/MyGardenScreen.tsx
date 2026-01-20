@@ -347,7 +347,7 @@ export function MyGardenScreen({ onNavigate, onPlantClick }: MyGardenScreenProps
         </div>
 
       {/* Plant List */}
-      <div className="px-6 py-6 space-y-6">
+      <div className="px-1 py-6 space-y-6">
         <div className="space-y-4">
           {plants.map((plant) => (
             <Card
