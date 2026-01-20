@@ -362,8 +362,8 @@ async def visualize_garden(
                     continue
 
                 # Fit Image to Box
-                scale_w = (box_width / p_width) * 2.5
-                scale_h = (box_height / p_height) * 2.5
+                scale_w = (box_width / p_width) * 1.5
+                scale_h = (box_height / p_height) * 1.5
                 scale = min(scale_w, scale_h)
                 
                 # SAFETY CHECK 2: Enforce minimum size (prevent 0px crash)

@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
-import { Camera, X, Sparkles, Sun, CloudRain, MapPin, ArrowRight, CheckCircle2, Upload, Image as ImageIcon, RefreshCcw } from 'lucide-react';
+import { Camera, X, Sparkles, Sun, CloudRain, MapPin, ArrowRight, CheckCircle2, Upload, Image as ImageIcon, RefreshCcw, Leaf } from 'lucide-react';
 import { Button } from './ui/button';
 import { Card } from './ui/card';
 import { Badge } from './ui/badge';
@@ -630,72 +630,106 @@ const ensureLandscape = (imageSrc: string): Promise<string> => {
                onClick={() => setScanStep('results')}
                className="text-gray-600 pl-0 hover:text-green-600"
              >
-               <ArrowRight className="w-4 h-4 mr-2 rotate-180" /> {/* Back Arrow */}
+               <ArrowRight className="w-4 h-4 mr-2 rotate-180" />
                Back to Results
              </Button>
           </div>
 
-          {/* Step 4: AI Visualization*/}
-          {scanStep === 'visualization' && (
-            <div className="pb-6 h-full bg-white flex flex-col">
-              {/* Image Area */}
-              <div className="relative w-full flex-1 bg-gray-900 overflow-hidden flex items-center justify-center">
-                  {isVisualizing ? (
-                      <div className="text-white text-center">
-                          <Sparkles className="w-10 h-10 animate-spin mx-auto mb-4 text-green-400" />
-                          <p>Planting your {selectedPlantForViz.name}...</p>
+          {/* Loading State */}
+          {isVisualizing ? (
+            <div className="p-6 min-h-[calc(100vh-160px)] flex flex-col items-center justify-center">
+              <div className="w-full max-w-sm space-y-6 animate-in fade-in zoom-in-95">
+                <div className="relative">
+                  <div className="w-full aspect-video rounded-2xl overflow-hidden shadow-xl">
+                    <img
+                      src={capturedImage}
+                      alt="Your space"
+                      className="w-full h-full object-cover"
+                    />
+                  </div>
+                  <div className="absolute inset-0 bg-green-900/60 backdrop-blur-[2px] rounded-2xl flex items-center justify-center">
+                    <div className="text-white text-center p-4">
+                      <Sparkles className="w-12 h-12 mx-auto mb-3 animate-pulse text-yellow-300" />
+                      <p className="font-semibold text-lg">Imagining your garden...</p>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="space-y-4">
+                  <div className="space-y-3 text-sm text-gray-600 bg-gray-50 p-4 rounded-xl border border-gray-100">
+                    <div className="flex items-center gap-3">
+                      <div className="p-1 rounded-full bg-green-100">
+                        <MapPin className="w-4 h-4 text-green-600" />
                       </div>
-                  ) : (
-                      // Show the AI Generated Image if available, otherwise fallback to original
-                      <img
-                        src={visualizedImage || capturedImage} 
-                        alt="Future Garden"
-                        className="w-full h-full object-contain"
-                      />
-                  )}
-              </div>
-          </div>
-      )}
-
-          <div className="px-6 pt-6 space-y-4">
-            <div>
-              <h3 className="text-xl font-bold text-gray-900 mb-2">
-                Your {selectedPlantForViz.name} Corner
-              </h3>
-              <p className="text-sm text-gray-600">
-                This spot has {analysisResults?.analysis.lightLevel.toLowerCase()} conditions for {selectedPlantForViz.name}. 
-                We project a harvest in approx {selectedPlantForViz.harvestDays || "45 days"}.
-              </p>
-            </div>
-
-            <Card className="p-4 bg-green-50 border-green-200">
-              <div className="flex items-start gap-3">
-                <CheckCircle2 className="w-5 h-5 text-green-600 flex-shrink-0 mt-0.5" />
-                <div>
-                  <p className="font-medium text-gray-900 mb-1">Ready to grow this?</p>
-                  <p className="text-sm text-gray-600">
-                    Get the specific soil mix and pot size for {selectedPlantForViz.name} delivered tomorrow.
-                  </p>
+                      <span className="text-gray-900 font-medium">Analyzing space layout...</span>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <div className="p-1 rounded-full bg-green-100 animate-pulse">
+                        <Leaf className="w-4 h-4 text-green-600" />
+                      </div>
+                      <span className="text-gray-900 font-medium">Placing {selectedPlantForViz.name} plants...</span>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <div className="p-1 rounded-full bg-gray-200">
+                        <Sparkles className="w-4 h-4 text-gray-400" />
+                      </div>
+                      <span>Rendering final visualization...</span>
+                    </div>
+                  </div>
                 </div>
               </div>
-            </Card>
-
-            <div className="space-y-3 pt-2">
-              <Button
-                  className="w-full bg-green-600 hover:bg-green-700 h-12 text-lg shadow-lg shadow-green-600/20"
-                  size="lg"
-                  onClick={() => {
-                      if (onNavigateToOrder) {
-                          // Pass the specific plant name to the Order Screen
-                          onNavigateToOrder(selectedPlantForViz.name);
-                      }
-                  }}
-               >
-                  Order {selectedPlantForViz.name} Kit
-               </Button>
-               <div className="h-12" />
             </div>
-          </div>
+          ) : (
+            <>
+              {/* Visualization Result */}
+              <div className="relative w-full aspect-[4/3] bg-gray-900 overflow-hidden flex items-center justify-center mb-6">
+                <img
+                  src={visualizedImage || capturedImage} 
+                  alt="Future Garden"
+                  className="w-full h-full object-contain"
+                />
+              </div>
+
+              <div className="px-6 space-y-4">
+                <div>
+                  <h3 className="text-xl font-bold text-gray-900 mb-2">
+                    Your {selectedPlantForViz.name} Garden Vision
+                  </h3>
+                  <p className="text-sm text-gray-600">
+                    This spot has {analysisResults?.analysis.lightLevel.toLowerCase()} conditions for {selectedPlantForViz.name}. 
+                    We project a harvest in approx {selectedPlantForViz.harvestDays || "45 days"}.
+                  </p>
+                </div>
+
+                <Card className="p-4 bg-green-50 border-green-200">
+                  <div className="flex items-start gap-3">
+                    <CheckCircle2 className="w-5 h-5 text-green-600 flex-shrink-0 mt-0.5" />
+                    <div>
+                      <p className="font-medium text-gray-900 mb-1">Ready to grow this?</p>
+                      <p className="text-sm text-gray-600">
+                        Get the specific soil mix and pot size for {selectedPlantForViz.name} delivered tomorrow.
+                      </p>
+                    </div>
+                  </div>
+                </Card>
+
+                <div className="space-y-3 pt-2">
+                  <Button
+                      className="w-full bg-green-600 hover:bg-green-700 h-12 text-lg shadow-lg shadow-green-600/20"
+                      size="lg"
+                      onClick={() => {
+                          if (onNavigateToOrder) {
+                              onNavigateToOrder(selectedPlantForViz.name);
+                          }
+                      }}
+                   >
+                      Order {selectedPlantForViz.name} Kit
+                   </Button>
+                   <div className="h-12" />
+                </div>
+              </div>
+            </>
+          )}
         </div>
       )}
     <div className="h-12" />

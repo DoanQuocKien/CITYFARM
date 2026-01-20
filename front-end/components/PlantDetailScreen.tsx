@@ -229,7 +229,7 @@ export function PlantDetailScreen({ plant, onBack }: PlantDetailScreenProps) {
           className="h-10 bg-white/20 hover:bg-white/30 backdrop-blur-md border border-white/40 text-white shadow-lg transition-all"
         >
           <Bot className="w-4 h-4 mr-2 text-yellow-300" />
-          AI Expert
+          Gardening Assistant
         </Button>
       </div>
     </div>
