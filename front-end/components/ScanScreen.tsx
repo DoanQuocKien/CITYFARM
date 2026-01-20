@@ -654,24 +654,7 @@ const ensureLandscape = (imageSrc: string): Promise<string> => {
                       />
                   )}
               </div>
-
-          {/* Bottom Action Sheet */}
-          <div className="p-6 bg-white rounded-t-2xl -mt-6 relative z-20 shadow-[0_-5px_20px_rgba(0,0,0,0.1)]">
-            <div className="w-12 h-1 bg-gray-200 rounded-full mx-auto mb-4" />
-            
-            <div className="flex items-center gap-4 mb-4">
-                <div className="w-16 h-16 bg-green-50 rounded-lg flex items-center justify-center border border-green-100">
-                    <CheckCircle2 className="w-8 h-8 text-green-600" />
-                </div>
-                <div>
-                    <h3 className="font-bold text-gray-900">Great Spot!</h3>
-                    <p className="text-sm text-gray-600">
-                        {selectedPlantForViz.name} will get optimal light here.
-                    </p>
-                </div>
-            </div>
           </div>
-        </div>
       )}
 
           <div className="px-6 pt-6 space-y-4">
@@ -680,7 +663,7 @@ const ensureLandscape = (imageSrc: string): Promise<string> => {
                 Your {selectedPlantForViz.name} Corner
               </h3>
               <p className="text-sm text-gray-600">
-                This spot has the perfect {analysisResults?.analysis.lightLevel} conditions for {selectedPlantForViz.name}. 
+                This spot has {analysisResults?.analysis.lightLevel.toLowerCase()} conditions for {selectedPlantForViz.name}. 
                 We project a harvest in approx {selectedPlantForViz.harvestDays || "45 days"}.
               </p>
             </div>

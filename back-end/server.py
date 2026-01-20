@@ -1,3 +1,4 @@
+from click import prompt
 import numpy as np
 from fastapi import FastAPI, UploadFile, File, Form
 from fastapi.middleware.cors import CORSMiddleware
@@ -142,7 +143,7 @@ async def analyze_space(
         {plant_list_text}
         
         TASK:
-        1. Analyze the light and environment in the photo, also consider the climate at lat {lat}, lon {lon} (fetch real weather data: temperature, humidity).
+        1. Analyze the light and environment in the photo, but remember to base your analysis, especially on light, to rightfully separate sunlights and artificial light and only looking for direct sunlight or potential sunlight source (window, actual outdoor etc.), also consider the climate at lat {lat}, lon {lon} (fetch real current real-time weather data: temperature, humidity).
         2. Rank the 4 plants above from 'Best Fit' (highest match) to 'Worst Fit' (lowest match).
         3. Provide a logic score (0-100) and reason (in one short sentence) for each.
 
@@ -197,9 +198,19 @@ async def analyze_space(
         """
 
         response = client.models.generate_content(
-            model="gemini-2.5-flash",
-            contents=[types.Part.from_bytes(data=image_bytes, mime_type="image/jpeg"), prompt],
-            config=types.GenerateContentConfig(response_mime_type="application/json")
+            model='gemini-2.5-pro',
+            contents=[
+                types.Content(
+                    role="user",
+                    parts=[
+                        types.Part.from_bytes(data=image_bytes, mime_type="image/jpeg"),
+                        types.Part.from_text(text=prompt)
+                    ]
+                )
+            ],
+            config=types.GenerateContentConfig(
+                response_mime_type="application/json"
+            )
         )
         
         # JSON Parsing
@@ -275,14 +286,14 @@ async def visualize_garden(
         # 3. ASK GEMINI
         prompt = f"""
         Act as a landscape architect. Look at this room/balcony photo.
-        I want to create a LUSH GARDEN by filling the available floor/surface space with MANY pots of the same plant.
+        I want to create a LUSH GARDEN by filling the available floor/surface space with MANY pots of the same plant. 
         
         PLANT INFO:
         - Name: "{plantName}"
         - Image Aspect Ratio: {aspect_ratio:.2f} (Width/Height)
         
         TASK:
-        1. Identify the floor or ground surface. Avoid walls/obstacles.
+        1. Identify the floor or ground surface. Avoid walls/obstacles. Prioritize larger open areas and potential conditions (e.g. sunlight spots) for specific plant species and placement.
         2. Generate 5 to 15 bounding boxes [ymin, xmin, ymax, xmax] (0-1000 scale).
            - Further back = Smaller. Front = Larger.
         3. Estimate brightness (0.0-1.0).
@@ -299,9 +310,19 @@ async def visualize_garden(
 
         # Using your preferred client syntax (google.genai)
         response = client.models.generate_content(
-            model="gemini-2.0-flash-exp", # Fallback to 1.5-flash if 2.0 unavailable
-            contents=[types.Part.from_bytes(data=room_bytes, mime_type="image/jpeg"), prompt],
-            config=types.GenerateContentConfig(response_mime_type="application/json")
+            model='gemini-2.5-pro',
+            contents=[
+                types.Content(
+                    role="user",
+                    parts=[
+                        types.Part.from_bytes(data=room_bytes, mime_type="image/jpeg"),
+                        types.Part.from_text(text=prompt)
+                    ]
+                )
+            ],
+            config=types.GenerateContentConfig(
+                response_mime_type="application/json"
+            )
         )
 
         raw_text = response.text.strip()
@@ -342,7 +363,7 @@ async def visualize_garden(
 
                 # Fit Image to Box
                 scale_w = (box_width / p_width) * 2.5
-                scale_h = (box_height / p_height) * 2.5 
+                scale_h = (box_height / p_height) * 2.5
                 scale = min(scale_w, scale_h)
                 
                 # SAFETY CHECK 2: Enforce minimum size (prevent 0px crash)

@@ -225,6 +225,7 @@ export function HomeScreen({ onNavigate, onPlantClick }: HomeScreenProps) {
           </Button>
         </Card>
       </div>
+      <div className="h-24"/>
     </div>
   );
 }

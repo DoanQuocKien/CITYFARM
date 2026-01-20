@@ -5,7 +5,7 @@ pydantic
 python-multipart
 httpx
 pillow
-google-genai
+google-generativeai
 python-multipart
 requests
 python-dotenv
