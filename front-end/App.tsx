@@ -4,10 +4,11 @@ import { ScanScreen } from './components/ScanScreen';
 import { MyGardenScreen } from './components/MyGardenScreen';
 import { CommunityScreen } from './components/CommunityScreen';
 import { PlantDetailScreen } from './components/PlantDetailScreen';
+import { SharedPlantView } from './components/SharedPlantView';
 import { OrderScreen } from './components/OrderScreen'; // NEW
 import { Home, Sprout, Users, Camera, ShoppingBag } from 'lucide-react';
 
-export type Screen = 'home' | 'scan' | 'garden' | 'community' | 'plant-detail' | 'order';
+export type Screen = 'home' | 'scan' | 'garden' | 'community' | 'plant-detail' | 'shared-plant' | 'order';
 
 export interface Plant {
   id: string;
@@ -41,6 +42,41 @@ export interface CommunityPost {
   plantingLogs: number;
 }
 
+export interface FeedPost {
+  id: string;
+  type: 'caption' | 'image' | 'plant-share';
+  user: {
+    name: string;
+    avatar: string;
+  };
+  location?: string;
+  caption: string;
+  image?: string;
+  sharedPlant?: Plant & { journal?: Array<{ photo: string; date: string }> };
+  likes: number;
+  comments: number;
+  time: string;
+  tags: string[];
+  isLiked: boolean;
+}
+
+export interface MarketListing {
+  id: string;
+  seller: {
+    name: string;
+    avatar: string;
+    district: string;
+    verifiedGrower: boolean;
+  };
+  plantName: string;
+  quantity: string;
+  price: string;
+  imageUrl: string;
+  description: string;
+  postedTime: string;
+  sourcePlantId?: string;
+}
+
 function App() {
   const [currentScreen, setCurrentScreen] = useState<Screen>('home');
   const [selectedPlant, setSelectedPlant] = useState<Plant | null>(null);
@@ -62,9 +98,10 @@ function App() {
       case 'home': return <HomeScreen onNavigate={setCurrentScreen} onPlantClick={navigateToPlantDetail} />;
       case 'scan': return <ScanScreen onNavigate={setCurrentScreen} onNavigateToOrder={navigateToOrder} />;
       case 'garden': return <MyGardenScreen onNavigate={setCurrentScreen} onPlantClick={navigateToPlantDetail} />;
-      case 'community': return <CommunityScreen onNavigate={setCurrentScreen} />;
+      case 'community': return <CommunityScreen onNavigate={setCurrentScreen} onViewSharedPlant={(plant) => {setSelectedPlant(plant); setCurrentScreen('shared-plant');}} />;
       case 'order': return <OrderScreen onNavigate={setCurrentScreen} preSelectedPlant={orderPreSelection} />;
       case 'plant-detail': return selectedPlant ? <PlantDetailScreen plant={selectedPlant} onBack={() => setCurrentScreen('garden')} /> : null;
+      case 'shared-plant': return selectedPlant ? <SharedPlantView plant={selectedPlant} onBack={() => setCurrentScreen('community')} /> : null;
       default: return <HomeScreen onNavigate={setCurrentScreen} onPlantClick={navigateToPlantDetail} />;
     }
   };
@@ -80,7 +117,7 @@ function App() {
         </div>
 
         {/* --- BOTTOM NAVIGATION --- */}
-        {currentScreen !== 'plant-detail' && (
+        {currentScreen !== 'plant-detail' && currentScreen !== 'shared-plant' && (
           // Added 'overflow-visible' to prevent clipping the floating button
           <nav className="fixed bottom-0 w-full max-w-md z-50 bg-white border-t border-gray-100 shadow-[0_-5px_20px_rgba(0,0,0,0.05)] h-20 overflow-visible">
              <div className="relative w-full h-full flex items-center justify-between px-2">

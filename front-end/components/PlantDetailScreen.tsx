@@ -172,14 +172,13 @@ export function PlantDetailScreen({ plant, onBack }: PlantDetailScreenProps) {
   return (
   <div className="min-h-screen bg-white relative pb-32">
     
-    {/* ⚠️ CRITICAL: The Bridge to the Phone Camera */}
-    {/* This input is hidden but triggered by the big green button at the bottom */}
+    {/* Hidden file input for camera */}
     <input 
       type="file" 
       ref={fileInputRef}
       accept="image/*"
-      capture="environment" // Forces rear camera on mobile
-      className="hidden"
+      capture="environment"
+      style={{ display: 'none' }}
       onChange={handlePhotoUpload}
     />
 

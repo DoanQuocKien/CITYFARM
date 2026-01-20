@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom'; // CRITICAL IMPORT
-import { Plus, TrendingUp, Droplet, Sun, QrCode, X, Loader2, ArrowRight, Trash2, Box, Tag, ChevronRight, RefreshCw } from 'lucide-react';
+import { Plus, TrendingUp, Droplet, Sun, QrCode, X, Loader2, ArrowRight, Trash2, Box, Tag, ChevronRight, RefreshCw, ShoppingBag } from 'lucide-react';
 import { Button } from './ui/button';
 import { Card } from './ui/card';
 import { Badge } from './ui/badge';
@@ -56,6 +56,9 @@ export function MyGardenScreen({ onNavigate, onPlantClick }: MyGardenScreenProps
   const [isScanning, setIsScanning] = useState(false);
   const [scanInput, setScanInput] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
+  const [isSellModalOpen, setIsSellModalOpen] = useState(false);
+  const [plantToSell, setPlantToSell] = useState<Plant | null>(null);
+  const [sellFormData, setSellFormData] = useState({ price: '', quantity: '', productName: '' });
 
   useEffect(() => {
     const handleEsc = (e: KeyboardEvent) => {
@@ -116,14 +119,70 @@ export function MyGardenScreen({ onNavigate, onPlantClick }: MyGardenScreenProps
         name: 'Green Onion',
         type: 'Herb',
         code: 'CITYFARM-ONION-04',
-        plantedDate: '2025-12-24', // Calculated to be approx 27 days ago
+        plantedDate: '2025-12-24',
         daysGrowing: 27,
         harvestDays: 55,
         health: 'warning',
         imageUrl: 'https://www.almanac.com/sites/default/files/styles/or/public/image_nodes/Untitled%20design%20%288%29_1.jpg?itok=leansz0S',
         nextWatering: 'Tomorrow, 7:00 AM',
         nextFertilizing: 'In 6 days',
-        progress: 49, // ~27/55
+        progress: 49,
+      },
+      {
+        id: '5',
+        name: 'Heirloom Tomato',
+        type: 'Vegetable',
+        code: 'CITYFARM-TOMATO-05',
+        plantedDate: '2025-11-21',
+        daysGrowing: 60,
+        harvestDays: 60,
+        health: 'healthy',
+        imageUrl: 'https://images.unsplash.com/photo-1592841200221-a6898f307baa?auto=format&fit=crop&w=1000&q=80',
+        nextWatering: 'Ready to harvest!',
+        nextFertilizing: 'N/A',
+        progress: 100,
+      },
+      {
+        id: '6',
+        name: 'Crispy Lettuce',
+        type: 'Vegetable',
+        code: 'CITYFARM-LETTUCE-06',
+        plantedDate: '2025-12-16',
+        daysGrowing: 35,
+        harvestDays: 35,
+        health: 'healthy',
+        imageUrl: 'https://images.unsplash.com/photo-1595735931739-0a99f2f0b0aa?auto=format&fit=crop&w=1000&q=80',
+        nextWatering: 'Ready to harvest!',
+        nextFertilizing: 'N/A',
+        progress: 100,
+      },
+      {
+        id: '7',
+        name: 'Spearmint',
+        type: 'Herb',
+        code: 'CITYFARM-MINT-07',
+        plantedDate: '2025-12-06',
+        daysGrowing: 45,
+        harvestDays: 45,
+        health: 'healthy',
+        imageUrl: 'https://images.unsplash.com/photo-1633916872730-7199a52e483b?auto=format&fit=crop&w=1000&q=80',
+        nextWatering: 'Ready to harvest!',
+        nextFertilizing: 'N/A',
+        progress: 100,
+      },
+      {
+        id: '8',
+        name: 'Spring Onion',
+        type: 'Herb',
+        code: 'CITYFARM-ONION-08',
+        plantedDate: '2025-12-01',
+        daysGrowing: 55,
+        harvestDays: 55,
+        health: 'healthy',
+        imageUrl: 'https://www.almanac.com/sites/default/files/styles/or/public/image_nodes/Untitled%20design%20%288%29_1.jpg?itok=leansz0S',
+        nextWatering: 'Ready to harvest!',
+        nextFertilizing: 'N/A',
+        progress: 100,
       }
   ]});
 
@@ -213,6 +272,48 @@ export function MyGardenScreen({ onNavigate, onPlantClick }: MyGardenScreenProps
     if (window.confirm("Remove this plant from your garden?")) {
         setPlants(prev => prev.filter(p => p.id !== id));
     }
+  };
+
+  const handleSellPlant = (plant: Plant) => {
+    if (plant.progress < 100) {
+      alert("Plant must be 100% mature to harvest and sell!");
+      return;
+    }
+    setPlantToSell(plant);
+    setSellFormData({ price: '', quantity: '', productName: plant.name });
+    setIsSellModalOpen(true);
+  };
+
+  const handleSubmitListing = () => {
+    if (!sellFormData.price || !sellFormData.quantity || !sellFormData.productName) {
+      alert("Please fill in all fields");
+      return;
+    }
+    // Save to localStorage for market listings
+    const listings = JSON.parse(localStorage.getItem('market_listings') || '[]');
+    const newListing = {
+      id: Date.now().toString(),
+      seller: {
+        name: 'You',
+        avatar: 'https://i.pravatar.cc/150?u=you',
+        district: 'Dĩ An',
+        verifiedGrower: true
+      },
+      plantName: sellFormData.productName,
+      quantity: sellFormData.quantity,
+      price: sellFormData.price,
+      imageUrl: plantToSell?.imageUrl || '',
+      description: `Harvested from my CityFarm ${plantToSell?.type}. Fresh and organic!`,
+      postedTime: 'Just now',
+      sourcePlantId: plantToSell?.id
+    };
+    listings.push(newListing);
+    localStorage.setItem('market_listings', JSON.stringify(listings));
+    
+    setIsSellModalOpen(false);
+    setPlantToSell(null);
+    setSellFormData({ price: '', quantity: '', productName: '' });
+    alert("✅ Plant listed on Fresh Market!");
   };
   return (
     <div className="min-h-screen bg-gray-50 relative pb-20">
@@ -411,6 +512,20 @@ export function MyGardenScreen({ onNavigate, onPlantClick }: MyGardenScreenProps
                     View Details
                     <ChevronRight className="w-4 h-4 ml-1" />
                 </Button>
+
+                {plant.progress === 100 && (
+                  <Button 
+                    variant="outline"
+                    className="w-full mt-2 text-orange-600 border-orange-200 hover:bg-orange-50"
+                    onClick={(e: React.MouseEvent) => {
+                      e.stopPropagation();
+                      handleSellPlant(plant);
+                    }}
+                  >
+                    <ShoppingBag className="w-4 h-4 mr-2" />
+                    Sell on Market
+                  </Button>
+                )}
               </div>
             </Card>
           ))}
@@ -429,6 +544,65 @@ export function MyGardenScreen({ onNavigate, onPlantClick }: MyGardenScreenProps
             </div>
         </Card>
       </div>
+
+      {/* SELL MODAL */}
+      {isSellModalOpen && createPortal(
+        <div 
+          className="fixed inset-0 z-[9999] bg-black/90 flex items-center justify-center p-4 backdrop-blur-sm"
+          onClick={() => setIsSellModalOpen(false)}
+        >
+          <Card 
+            className="bg-white rounded-2xl w-full max-w-sm overflow-hidden shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="p-4 border-b flex justify-between items-center bg-gray-50">
+              <h3 className="font-bold text-lg">List on Fresh Market</h3>
+              <button 
+                onClick={() => setIsSellModalOpen(false)}
+                className="w-8 h-8 flex items-center justify-center hover:bg-gray-200 rounded-full"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <div className="p-6 space-y-4">
+              <div>
+                <label className="text-sm font-semibold text-gray-700 block mb-2">Product Name</label>
+                <Input 
+                  value={sellFormData.productName}
+                  onChange={(e) => setSellFormData({...sellFormData, productName: e.target.value})}
+                  placeholder="e.g. Organic Bok Choy"
+                  className="w-full"
+                />
+              </div>
+              <div>
+                <label className="text-sm font-semibold text-gray-700 block mb-2">Quantity</label>
+                <Input 
+                  value={sellFormData.quantity}
+                  onChange={(e) => setSellFormData({...sellFormData, quantity: e.target.value})}
+                  placeholder="e.g. 500g"
+                  className="w-full"
+                />
+              </div>
+              <div>
+                <label className="text-sm font-semibold text-gray-700 block mb-2">Price</label>
+                <Input 
+                  value={sellFormData.price}
+                  onChange={(e) => setSellFormData({...sellFormData, price: e.target.value})}
+                  placeholder="e.g. 30,000₫"
+                  className="w-full"
+                />
+              </div>
+              <Button 
+                onClick={handleSubmitListing}
+                className="w-full bg-green-600 hover:bg-green-700 h-11"
+              >
+                List Product
+              </Button>
+            </div>
+          </Card>
+        </div>,
+        document.body
+      )}
     </div>
   );
 }
