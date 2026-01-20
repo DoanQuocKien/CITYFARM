@@ -378,7 +378,7 @@ const ensureLandscape = (imageSrc: string): Promise<string> => {
                     </p>
                     <Button 
                       onClick={handleStartCameraClick}
-                      className="w-full bg-green-600 hover:bg-green-700 h-14 text-lg font-semibold shadow-lg shadow-green-900/20"
+                      className="w-full bg-green-600 hover:bg-green-700 h-14 text-lg font-semibold shadow-lg shadow-green-600/20"
                     >
                       <Camera className="w-5 h-5 mr-2" />
                       Start Camera

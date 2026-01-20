@@ -387,7 +387,7 @@ export function MyGardenScreen({ onNavigate, onPlantClick }: MyGardenScreenProps
 
                     {/* Custom Overlay (Green Box) */}
                     <div className="absolute inset-0 pointer-events-none z-10 flex items-center justify-center">
-                        <div className="w-64 h-64 border-2 border-green-500 rounded-lg relative shadow-[0_0_0_9999px_rgba(0,0,0,0.5)]">
+                        <div className="w-64 h-64 border-2 border-green-400 rounded-lg relative shadow-[0_0_0_9999px_rgba(0,0,0,0.5)]">
                             <div className="absolute top-0 left-0 w-full h-1 bg-green-500 shadow-[0_0_15px_#22c55e] animate-scan-down"></div>
                         </div>
                     </div>

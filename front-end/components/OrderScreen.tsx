@@ -142,7 +142,7 @@ export function OrderScreen({ onNavigate, preSelectedPlant }: OrderScreenProps) 
             {displayedKits.map(kit => (
               <Card 
                 key={kit.id} 
-                className="overflow-hidden hover:border-green-500 cursor-pointer transition-all active:scale-[0.98]"
+                className="overflow-hidden hover:border-green-400 cursor-pointer transition-all active:scale-[0.98]"
                 onClick={() => handleKitSelect(kit)}
               >
                 <div className="flex">
@@ -183,7 +183,7 @@ export function OrderScreen({ onNavigate, preSelectedPlant }: OrderScreenProps) 
             {SEEDS.filter(s => selectedKit.allowedSeeds.includes(s.id)).map(seed => (
               <Card 
                 key={seed.id}
-                className="p-4 flex flex-col items-center justify-center gap-3 cursor-pointer hover:border-green-500 hover:bg-green-50 transition-all"
+                className="p-4 flex flex-col items-center justify-center gap-3 cursor-pointer hover:border-green-400 hover:bg-green-50 transition-all"
                 onClick={() => { setSelectedSeed(seed); setStep('confirm'); }}
               >
                  <div className="text-4xl">{seed.icon}</div>

@@ -208,7 +208,7 @@ export function HomeScreen({ onNavigate, onPlantClick }: HomeScreenProps) {
         </div>
 
         {/* Community Teaser */}
-        <Card className="p-6 bg-gradient-to-r from-emerald-50 to-teal-50 border-emerald-200">
+        <Card className="p-6 bg-gradient-to-r from-[#e8e3d9] to-[#d4e0d4] border-green-200">
           <div className="flex items-start justify-between mb-3">
             <div>
               <h3 className="font-semibold text-gray-900 mb-1">Local Green Market</h3>

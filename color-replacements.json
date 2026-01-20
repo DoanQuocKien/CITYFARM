@@ -1,0 +1,17 @@
+{
+  "replacements": {
+    "bg-green-600": "bg-farm-primary",
+    "bg-green-700": "bg-farm-primary-hover",
+    "bg-green-50": "bg-farm-accent",
+    "hover:bg-green-700": "hover:bg-farm-primary-hover",
+    "hover:bg-green-50": "hover:bg-farm-accent",
+    "text-green-600": "text-farm-primary",
+    "text-green-700": "text-farm-primary-dark",
+    "border-green-600": "border-farm-primary",
+    "border-green-200": "border-[#cbd5c0]",
+    "shadow-green-600/20": "shadow-farm",
+    "shadow-green-900/20": "shadow-farm",
+    "hover:text-green-600": "hover:text-farm-primary",
+    "hover:text-green-700": "hover:text-farm-primary-dark"
+  }
+}

@@ -150,8 +150,8 @@ function App() {
                         shadow-2xl transition-transform active:scale-95
                         border-[6px] border-white  /* This border matches the nav bg to look like a cutout */
                         ${currentScreen === 'scan' 
-                          ? 'bg-green-700 text-white ring-2 ring-green-100' 
-                          : 'bg-green-600 text-white hover:bg-green-500'
+                          ? 'bg-green-700 text-white ring-2 ring-[#cbd5c0]' 
+                          : 'bg-green-600 text-white hover:bg-green-700'
                         }
                       `}
                     >

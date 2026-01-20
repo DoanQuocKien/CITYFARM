@@ -572,7 +572,7 @@ export function CommunityScreen({ onNavigate, onViewSharedPlant }: CommunityScre
                       <p className="text-xs text-green-100">{post.sharedPlant.type} • Day {post.sharedPlant.daysGrowing}</p>
                       <div className="mt-2 bg-white/20 rounded-full h-1.5">
                         <div 
-                          className="bg-green-400 h-full rounded-full" 
+                          className="bg-green-500 h-full rounded-full" 
                           style={{width: `${(post.sharedPlant.daysGrowing / post.sharedPlant.harvestDays) * 100}%`}}
                         />
                       </div>
@@ -613,7 +613,7 @@ export function CommunityScreen({ onNavigate, onViewSharedPlant }: CommunityScre
       {activeTab === 'market' && (
         <div className="p-4 space-y-4 animate-in slide-in-from-right-4 duration-300">
           {/* Market Banner */}
-          <div className="bg-gradient-to-r from-green-50 to-emerald-50 p-4 rounded-xl border border-green-100 mb-2">
+          <div className="bg-gradient-to-r from-[#e8e3d9] to-[#d4e0d4] p-4 rounded-xl border border-green-200 mb-2">
              <h3 className="font-bold text-green-800 mb-1 flex items-center gap-2">
                 <ShoppingBag className="w-4 h-4" /> Fresh Market
              </h3>
@@ -621,7 +621,7 @@ export function CommunityScreen({ onNavigate, onViewSharedPlant }: CommunityScre
           </div>
 
           {marketListings.map((item: any) => (
-            <Card key={item.id} className="flex overflow-hidden shadow-sm border border-gray-100 hover:border-green-300 transition-colors group relative">
+            <Card key={item.id} className="flex overflow-hidden shadow-sm border border-gray-100 hover:border-green-200 transition-colors group relative">
                {/* Left: Image */}
                <div className="w-1/3 relative">
                  <img 
