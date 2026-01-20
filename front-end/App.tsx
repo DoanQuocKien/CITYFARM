@@ -13,6 +13,7 @@ export interface Plant {
   id: string;
   name: string;
   type: string;
+  code: string;
   plantedDate: string;
   daysGrowing: number;
   harvestDays: number;
