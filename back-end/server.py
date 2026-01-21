@@ -15,6 +15,9 @@ from dotenv import load_dotenv
 import base64
 import json
 import uuid
+import time
+import asyncio
+from functools import wraps
 
 app = FastAPI()
 
@@ -33,6 +36,53 @@ from dotenv import load_dotenv
 load_dotenv()
 
 API_KEY = os.getenv("GOOGLE_API_KEY")
+
+# --- RETRY LOGIC FOR GEMINI API ---
+def retry_with_backoff(max_retries=3, initial_delay=2, backoff_factor=2, timeout_seconds=60):
+    """
+    Retry decorator for Gemini API calls with exponential backoff.
+    - max_retries: Maximum number of retry attempts
+    - initial_delay: Initial delay in seconds between retries
+    - backoff_factor: Multiplier for delay after each retry
+    - timeout_seconds: Timeout for the API call
+    """
+    def decorator(func):
+        @wraps(func)
+        async def wrapper(*args, **kwargs):
+            delay = initial_delay
+            last_exception = None
+            
+            for attempt in range(max_retries + 1):
+                try:
+                    return await func(*args, **kwargs)
+                except (TimeoutError, httpx.TimeoutException) as e:
+                    last_exception = e
+                    if attempt < max_retries:
+                        print(f"Timeout on attempt {attempt + 1}/{max_retries + 1}. Retrying in {delay}s...")
+                        await asyncio.sleep(delay)
+                        delay *= backoff_factor
+                    else:
+                        print(f"Max retries reached. Raising timeout error.")
+                        raise
+                except Exception as e:
+                    # Check if it's a rate limit or server error (5xx, 429)
+                    error_str = str(e)
+                    if any(indicator in error_str for indicator in ["429", "500", "502", "503", "504", "deadline exceeded", "SERVICE_UNAVAILABLE"]):
+                        last_exception = e
+                        if attempt < max_retries:
+                            print(f"API error on attempt {attempt + 1}/{max_retries + 1}: {error_str}. Retrying in {delay}s...")
+                            await asyncio.sleep(delay)
+                            delay *= backoff_factor
+                        else:
+                            print(f"Max retries reached. Raising API error.")
+                            raise
+                    else:
+                        # Re-raise non-retryable errors immediately
+                        raise
+            
+            raise last_exception
+        return wrapper
+    return decorator
 
 # --- CONFIGURATION ---
 OPENWEATHER_API_KEY = os.getenv("OPENWEATHER_API_KEY") # Replace with a free key for the MVP
@@ -119,6 +169,51 @@ async def read_image_file(file: UploadFile) -> bytes:
 
 client = genai.Client(api_key=API_KEY)
 
+# --- HELPER FUNCTIONS FOR GEMINI API CALLS ---
+@retry_with_backoff(max_retries=3, initial_delay=2, backoff_factor=2)
+async def call_gemini_analyze(image_bytes, prompt):
+    """
+    Call Gemini API for space analysis with automatic retry on timeout/server errors.
+    """
+    response = client.models.generate_content(
+        model='gemini-2.5-pro',
+        contents=[
+            types.Content(
+                role="user",
+                parts=[
+                    types.Part.from_bytes(data=image_bytes, mime_type="image/jpeg"),
+                    types.Part.from_text(text=prompt)
+                ]
+            )
+        ],
+        config=types.GenerateContentConfig(
+            response_mime_type="application/json"
+        )
+    )
+    return response
+
+@retry_with_backoff(max_retries=3, initial_delay=2, backoff_factor=2)
+async def call_gemini_visualize(image_bytes, prompt):
+    """
+    Call Gemini API for garden visualization with automatic retry on timeout/server errors.
+    """
+    response = client.models.generate_content(
+        model='gemini-2.5-pro',
+        contents=[
+            types.Content(
+                role="user",
+                parts=[
+                    types.Part.from_bytes(data=image_bytes, mime_type="image/jpeg"),
+                    types.Part.from_text(text=prompt)
+                ]
+            )
+        ],
+        config=types.GenerateContentConfig(
+            response_mime_type="application/json"
+        )
+    )
+    return response
+
 # --- 4. REAL ANALYSIS (Preserved Logic) ---
 @app.post("/api/scan/analyze")
 async def analyze_space(
@@ -197,21 +292,7 @@ async def analyze_space(
         }}
         """
 
-        response = client.models.generate_content(
-            model='gemini-2.5-pro',
-            contents=[
-                types.Content(
-                    role="user",
-                    parts=[
-                        types.Part.from_bytes(data=image_bytes, mime_type="image/jpeg"),
-                        types.Part.from_text(text=prompt)
-                    ]
-                )
-            ],
-            config=types.GenerateContentConfig(
-                response_mime_type="application/json"
-            )
-        )
+        response = await call_gemini_analyze(image_bytes, prompt)
         
         # JSON Parsing
         raw_text = response.text.strip()
@@ -309,21 +390,7 @@ async def visualize_garden(
         """
 
         # Using your preferred client syntax (google.genai)
-        response = client.models.generate_content(
-            model='gemini-2.5-pro',
-            contents=[
-                types.Content(
-                    role="user",
-                    parts=[
-                        types.Part.from_bytes(data=room_bytes, mime_type="image/jpeg"),
-                        types.Part.from_text(text=prompt)
-                    ]
-                )
-            ],
-            config=types.GenerateContentConfig(
-                response_mime_type="application/json"
-            )
-        )
+        response = await call_gemini_visualize(room_bytes, prompt)
 
         raw_text = response.text.strip()
         if raw_text.startswith("```"):
