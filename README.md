@@ -15,41 +15,41 @@
 
 ### 📸 **1. AI Space Analysis**
 Stop guessing. Upload a photo of your balcony, and our AI analyzes:
-* [cite_start]**Light Conditions:** Distinguishes between direct sunlight, partial shade, and artificial light[cite: 21].
-* [cite_start]**Climate Context:** Integrates real-time weather data (Temperature/Humidity) for your specific location[cite: 99].
-* [cite_start]**Space Estimation:** Calculates available planting area[cite: 24].
-* [cite_start]**Smart Recommendations:** Suggests the top plants (e.g., Tomato, Mint, Lettuce) that will actually survive in your specific environment [cite: 26-32].
+* **Light Conditions:** Distinguishes between direct sunlight, partial shade, and artificial light.
+* **Climate Context:** Integrates real-time weather data (Temperature/Humidity) for your specific location.
+* **Space Estimation:** Calculates available planting area.
+* **Smart Recommendations:** Suggests the top plants (e.g., Tomato, Mint, Lettuce) that will actually survive in your specific environment.
 
 ### 🎨 **2. Generative Garden Visualization**
 See it before you plant it.
-* [cite_start]The app uses Generative AI to overlay lush, realistic plants onto your original photo, showing you exactly how your "future garden" will look[cite: 43].
-* [cite_start]Adjusts for lighting and perspective automatically[cite: 58].
+* The app uses Generative AI to overlay lush, realistic plants onto your original photo, showing you exactly how your "future garden" will look.
+* Adjusts for lighting and perspective automatically.
 
 ### 💬 **3. AI Gardening Assistant**
-* [cite_start]Chat with a specialized botanical AI agent trained on specific plant needs[cite: 62].
-* [cite_start]**Context-Aware:** Knows if you are asking about a Tomato or Mint plant and adjusts advice accordingly[cite: 95].
-* [cite_start]**Diagnose Issues:** Upload photos to identify pests or diseases (e.g., yellow leaves, aphids)[cite: 70].
+* Chat with a specialized botanical AI agent trained on specific plant needs.
+* **Context-Aware:** Knows if you are asking about a Tomato or Mint plant and adjusts advice accordingly.
+* **Diagnose Issues:** Upload photos to identify pests or diseases (e.g., yellow leaves, aphids).
 
 ### 🥬 **4. Community Marketplace**
-* [cite_start]**Social Feed:** Share your harvest and view posts from other urban farmers[cite: 400].
-* [cite_start]**Fresh Market:** Buy and sell home-grown produce within your local community[cite: 408].
-* [cite_start]**Verified Growers:** Badges for users with documented planting logs[cite: 432].
+* **Social Feed:** Share your harvest and view posts from other urban farmers.
+* **Fresh Market:** Buy and sell home-grown produce within your local community.
+* **Verified Growers:** Badges for users with documented planting logs.
 
 ---
 
 ## 🛠️ Tech Stack
 
 ### **Frontend**
-* [cite_start]**Framework:** React 18 (Vite) + TypeScript[cite: 2348, 2352].
-* [cite_start]**UI Library:** Tailwind CSS v4, Shadcn UI, Radix UI[cite: 1304, 1724].
+* **Framework:** React 18 (Vite) + TypeScript.
+* **UI Library:** Tailwind CSS v4, Shadcn UI, Radix UI.
 * **State Management:** React Hooks.
-* [cite_start]**Icons:** Lucide React[cite: 2385].
+* **Icons:** Lucide React.
 
 ### **Backend**
-* [cite_start]**Framework:** Python FastAPI[cite: 9].
-* [cite_start]**AI Engine:** Google Gemini 2.5 Pro (Vision & Text)[cite: 33].
-* [cite_start]**Image Processing:** Pillow (PIL), NumPy[cite: 9].
-* [cite_start]**Weather:** OpenWeatherMap API[cite: 9].
+* **Framework:** Python FastAPI.
+* **AI Engine:** Google Gemini 2.5 Pro (Vision & Text).
+* **Image Processing:** Pillow (PIL), NumPy.
+* **Weather:** OpenWeatherMap API.
 
 ---
 
